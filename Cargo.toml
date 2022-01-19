@@ -1,0 +1,35 @@
+[package]
+name = "iso8061-timestamp"
+version = "0.1.0"
+authors = ["novacrazy <novacrazy@gmail.com>"]
+edition = "2021"
+description = "High-performance ISO8061 Timestamp formatting and parsing"
+keywords = ["date", "time", "timestamp", "iso8061", "formatting", "parsing"]
+categories = ["date-and-time"]
+
+[features]
+std = []
+pg = ["postgres-types", "bytes", "std"]
+nightly = []
+default = ["std", "serde"]
+
+[dependencies]
+serde = { optional = true, version = "1" }
+time = { version = "0.3", features = ["macros"] }
+postgres-types = { optional = true, version = "0.2.2", features = ["with-time-0_3"] }
+bytes = { optional = true, version = "1.1.0" }
+generic-array = "0.14.4"
+
+[dev-dependencies]
+time = { version = "0.3", features = ["macros", "parsing", "formatting"] }
+criterion = "0.3"
+chrono = "0.4"
+
+[[bench]]
+name = "timestamp"
+harness = false
+
+[profile.release]
+opt-level = 3
+lto = 'fat'
+codegen-units = 1
