@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["novacrazy <novacrazy@gmail.com>"]
 edition = "2021"
 description = "High-performance ISO8061 Timestamp formatting and parsing"
-keywords = ["date", "time", "timestamp", "iso8061", "formatting", "parsing"]
+keywords = ["date", "time", "iso8061", "formatting", "parsing"]
 readme = "README.md"
 categories = ["date-and-time", "no-std", "parser-implementations", "value-formatting"]
 license = "MIT OR Apache-2.0"
@@ -30,6 +30,7 @@ chrono = "0.4"
 
 [[bench]]
 name = "timestamp"
+path = "benches/timestamp.rs"
 harness = false
 
 [profile.release]
