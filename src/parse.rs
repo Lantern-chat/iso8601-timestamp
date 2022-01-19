@@ -9,7 +9,7 @@ trait FastParse: Sized {
 
 #[inline]
 fn parse_2(s: &[u8]) -> u16 {
-    assume!(s.len() == 2);
+    unsafe { assume!(s.len() == 2) };
 
     let zero: u16 = 0x3030;
 
@@ -25,7 +25,7 @@ fn parse_2(s: &[u8]) -> u16 {
 
 #[inline]
 fn parse_4(s: &[u8]) -> u16 {
-    assume!(s.len() == 4);
+    unsafe { assume!(s.len() == 4) };
 
     let zero: u32 = 0x30303030;
 
@@ -40,14 +40,14 @@ fn parse_4(s: &[u8]) -> u16 {
 
 #[inline]
 fn parse_3(s: &[u8]) -> u16 {
-    assume!(s.len() == 3);
+    unsafe { assume!(s.len() == 3) };
 
     let hundreds = (s[0] - b'0') as u16 * 100;
 
     hundreds + parse_2(&s[1..3])
 }
 
-// TODO: Parse 5 and 6
+// TODO: Parse 5 and 6?
 
 macro_rules! impl_fp {
     ($($t:ty),*) => {$(
@@ -119,7 +119,7 @@ pub fn parse_iso8061(ts: &str) -> Option<PrimitiveDateTime> {
     //println!("DAY: {}", day);
 
     // only parsed 4 digits
-    assume!(year <= 9999);
+    unsafe { assume!(year <= 9999) };
 
     let ymd = Date::from_calendar_date(year as i32, Month::try_from(month).ok()?, day).ok()?;
 

@@ -48,8 +48,5 @@ macro_rules! unlikely {
 
 #[rustfmt::skip]
 macro_rules! assume {
-    ($e:expr) => {{
-        #[allow(unused_unsafe)]
-        unsafe { $crate::macros::assume($e) }
-    }}
+    ($e:expr) => { $crate::macros::assume($e) }
 }
