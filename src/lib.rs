@@ -9,6 +9,30 @@
 //! The [Timestamp] struct is only 12 bytes, while the formatted strings can be as large as 29 bytes,
 //! and care is taken to avoid heap allocations when formatting.
 //!
+//! Example:
+//! ```rust,ignore
+//! use serde::{Serialize, Deserialize};
+//! use smol_str::SmolStr; // stack-allocation for small strings
+//! use iso8061_timestamp::Timestamp;
+//!
+//! #[derive(Debug, Clone, Serialize, Deserialize)]
+//! pub struct Event {
+//!     name: SmolStr,
+//!     ts: Timestamp,
+//!     value: i32,
+//! }
+//! ```
+//! when formatted to JSON could result in:
+//! ```json
+//! {
+//!     "name": "some_event",
+//!     "ts": "2021-10-17T02:03:01Z",
+//!     "value": 42,
+//! }
+//! ```
+//!
+//! When serializing to non-human-readable formats, such as binary formats, the `Timestamp` will be written
+//! as an `i64` representing milliseconds since the Unix Epoch. This way it only uses 8 bytes instead of 24.
 //!
 
 #![cfg_attr(not(feature = "std"), no_std)]
