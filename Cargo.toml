@@ -5,7 +5,10 @@ authors = ["novacrazy <novacrazy@gmail.com>"]
 edition = "2021"
 description = "High-performance ISO8061 Timestamp formatting and parsing"
 keywords = ["date", "time", "timestamp", "iso8061", "formatting", "parsing"]
-categories = ["date-and-time"]
+readme = "README.md"
+categories = ["date-and-time", "no-std", "parser-implementations", "value-formatting"]
+license = "MIT OR Apache-2.0"
+include = ["src/**/*", "LICENSE-*", "README.md", "!src/tests.rs"]
 
 [features]
 std = []
