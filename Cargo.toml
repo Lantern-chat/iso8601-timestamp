@@ -8,7 +8,7 @@ keywords = ["date", "time", "timestamp", "iso8061", "formatting", "parsing"]
 readme = "README.md"
 categories = ["date-and-time", "no-std", "parser-implementations", "value-formatting"]
 license = "MIT OR Apache-2.0"
-include = ["src/**/*", "LICENSE-*", "README.md", "!src/tests.rs"]
+include = ["src/**/*", "LICENSE-*", "README.md"]
 
 [features]
 std = []
