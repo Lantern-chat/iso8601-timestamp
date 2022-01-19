@@ -24,6 +24,12 @@ fn criterion_benchmark(c: &mut Criterion) {
         b.iter(|| ts.format_with_offset(offset));
     });
 
+    c.bench_function("format_iso8061_nanoseconds", |b| {
+        let ts = black_box(Timestamp::now_utc());
+
+        b.iter(|| ts.format_nanoseconds());
+    });
+
     c.bench_function("format_is8061_slow", |b| {
         let ts = black_box(Utc::now().naive_utc());
 

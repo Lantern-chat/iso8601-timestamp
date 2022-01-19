@@ -20,13 +20,29 @@ pub struct Event {
     value: i32,
 }
 ```
-when formatted to JSON could result in:
+when serialized to JSON could result in:
 ```json
 {
     "name": "some_event",
     "ts": "2021-10-17T02:03:01Z",
-    "value": 42,
+    "value": 42
 }
 ```
 
 When serializing to non-human-readable formats, such as binary formats, the `Timestamp` will be written as an `i64` representing milliseconds since the Unix Epoch. This way it only uses 8 bytes instead of 24.
+
+Similarly, when deserializing, it supports either an ISO8061 string or an `i64` representing a unix timestamp in milliseconds.
+
+## Features
+
+* `std` (default)
+    - Enables standard library features, such as getting the current time.
+
+* `serde` (default)
+    - Enables serde implementations for `Timestamp` and `TimestampStr`
+
+* `nightly`
+    - Enables nightly-specific optimizations, but without it will fallback to workarounds to enable the same optimizations.
+
+* `pg`
+    - Enables `ToSql`/`FromSql` implementations for `Timestamp` so it can be directly stored/fetched from a PostgreSQL database using `rust-postgres`

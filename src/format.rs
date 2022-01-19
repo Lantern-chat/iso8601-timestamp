@@ -20,43 +20,6 @@ const fn make_table() -> [[u8; 2]; 100] {
 
 const LOOKUP: [[u8; 2]; 100] = make_table();
 
-/*
-use time::{Date, Month};
-
-const fn make_day_table(leap: bool) -> [(Month, u8); 366] {
-    let mut table = [(Month::January, 0); 366];
-
-    let mut i = 1;
-    while i < 366 {
-        if let Ok(date) = Date::from_ordinal_date(if leap { 2020 } else { 2019 }, i) {
-            let (_, month, day) = date.to_calendar_date();
-            table[i as usize] = (month, day);
-        }
-        i += 1;
-    }
-
-    table
-}
-
-const ORDINAL_TABLE: [(Month, u8); 366] = make_day_table(false);
-const ORDINAL_TABLE_L: [(Month, u8); 366] = make_day_table(true);
-
-fn get_ymd(d: Date) -> (i32, Month, u8) {
-    let year = d.year();
-
-    let table = match time::util::is_leap_year(year) {
-        true => &ORDINAL_TABLE_L,
-        false => &ORDINAL_TABLE,
-    };
-
-    let ordinal = d.ordinal();
-
-    let (month, day) = unsafe { *table.get_unchecked(ordinal as usize) };
-
-    (year, month, day)
-}
-*/
-
 #[cfg(target_arch = "x86_64")]
 use core::arch::x86_64::{_mm_prefetch, _MM_HINT_T0};
 
@@ -67,6 +30,7 @@ use core::arch::x86::{_mm_prefetch, _MM_HINT_T0};
 #[allow(unused_assignments)]
 #[inline(always)]
 pub fn format_iso8061<S: TimestampStrStorage>(ts: PrimitiveDateTime, offset: UtcOffset) -> TimestampStr<S> {
+    // prefetch the table while datetime parts are being destructured
     let lookup = LOOKUP.as_ptr();
     if cfg!(any(target_arch = "x86_64", target_arch = "x86")) {
         unsafe { _mm_prefetch::<_MM_HINT_T0>(lookup as _) }
@@ -75,41 +39,33 @@ pub fn format_iso8061<S: TimestampStrStorage>(ts: PrimitiveDateTime, offset: Utc
     // decompose timestamp
     //let (year, month, day) = get_ymd(ts.date());
     let (year, month, day) = ts.to_calendar_date();
-    let (hour, minute, second, milliseconds) = ts.as_hms_milli();
+    let (hour, minute, second, nanoseconds) = ts.as_hms_nano();
 
     let mut buf = S::init();
     let mut pos = 0;
 
     macro_rules! write_num {
         ($s: expr, $len: expr, $max: expr) => {unsafe {
-            let value = $s;
+            let mut value = $s;
+            let mut len = $len;
 
             // tell the compiler that the max value is known
             assume!(value <= $max);
 
             let buf = buf.as_mut_ptr().add(pos);
 
-            match $len {
-                2 => {
-                    buf.copy_from_nonoverlapping(lookup.add(value as usize) as *const u8, 2);
-                }
-                3 => {
-                    let ab = value / 10;
-                    let c = value % 10;
+            // process 2 digits per iteration, this loop will be unrolled
+            while len >= 2 {
+                let d1 = value % 100;
+                len -= 2;
+                buf.add(len).copy_from_nonoverlapping(lookup.add(d1 as usize) as *const u8, 2);
 
-                    buf.copy_from_nonoverlapping(lookup.add(ab as usize) as *const u8, 2);
-                    *buf.add(2) = (*lookup.add(c as usize))[1];
-                }
-                4 => {
-                    let value = value as u16;
+                value /= 100;
+            }
 
-                    let ab = value / 100;
-                    let cd = value % 100;
-
-                    buf.copy_from_nonoverlapping(lookup.add(ab as usize) as *const u8, 2);
-                    buf.add(2).copy_from_nonoverlapping(lookup.add(cd as usize) as *const u8, 2);
-                }
-                _ => core::hint::unreachable_unchecked()
+            // handle remainder
+            if len == 1 {
+                *buf = (value as u8) + b'0';
             }
 
             pos += $len;
@@ -126,9 +82,14 @@ pub fn format_iso8061<S: TimestampStrStorage>(ts: PrimitiveDateTime, offset: Utc
     write_num!(minute,          2, 59);     // mm:
     write_num!(second,          2, 59);     // ss.?
     if !S::IS_FULL { pos += 1; }            // .
-    write_num!(milliseconds,    3, 999);    // SSS
 
-    if S::HAS_OFFSET && S::IS_FULL {
+    match S::PRECISION {
+        3 => write_num!(nanoseconds / 1_000_000, 3, 999), // SSS
+        9 => write_num!(nanoseconds, 9, 999_999_999),     // SSSSSSSSS
+        _ => unsafe { core::hint::unreachable_unchecked() }
+    }
+
+    if S::HAS_OFFSET {
         if offset.is_negative() {
             // go back one and overwrite +
             unsafe { *buf.as_mut_ptr().add(pos - 1) = b'-'; }

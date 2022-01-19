@@ -22,20 +22,36 @@
 //!     value: i32,
 //! }
 //! ```
-//! when formatted to JSON could result in:
+//! when serialized to JSON could result in:
 //! ```json
 //! {
 //!     "name": "some_event",
 //!     "ts": "2021-10-17T02:03:01Z",
-//!     "value": 42,
+//!     "value": 42
 //! }
 //! ```
 //!
 //! When serializing to non-human-readable formats, such as binary formats, the `Timestamp` will be written
 //! as an `i64` representing milliseconds since the Unix Epoch. This way it only uses 8 bytes instead of 24.
 //!
+//! Similarly, when deserializing, it supports either an ISO8061 string or an `i64` representing a unix timestamp in milliseconds.
+//!
+//! ## Features
+//!
+//! * `std` (default)
+//!     - Enables standard library features, such as getting the current time.
+//!
+//! * `serde` (default)
+//!     - Enables serde implementations for `Timestamp` and `TimestampStr`
+//!
+//! * `nightly`
+//!     - Enables nightly-specific optimizations, but without it will fallback to workarounds to enable the same optimizations.
+//!
+//! * `pg`
+//!     - Enables `ToSql`/`FromSql` implementations for `Timestamp` so it can be directly stored/fetched from a PostgreSQL database using `rust-postgres`
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(feature = "nightly", feature(core_intrinsics))]
 
 use core::ops::{Deref, DerefMut};
 use core::time::Duration;
@@ -52,27 +68,28 @@ mod format;
 mod parse;
 mod ts_str;
 
-use ts_str::{Full, FullOffset, Short};
+use ts_str::{Full, FullNanoseconds, FullOffset, Short};
 
 pub use ts_str::TimestampStr;
 
 /// Timestamp formats
 pub mod formats {
-    pub use crate::ts_str::{Full, FullOffset, Short};
+    pub use crate::ts_str::{Full, FullOffset, Short, FullNanoseconds};
 }
 
 /// UTC Timestamp with nanosecond precision, millisecond-precision when serialized to serde (JSON).
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+///
+/// A `Deref`/`DerefMut` implementation is provided to gain access to the inner `PrimitiveDateTime` object.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(transparent)]
 pub struct Timestamp(PrimitiveDateTime);
 
 use core::fmt;
 
-impl fmt::Debug for Timestamp {
+impl fmt::Display for Timestamp {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let ts = self.format();
-
-        f.debug_tuple("Timestamp").field(&ts).finish()
+        f.write_str(&self.format())
     }
 }
 
@@ -114,6 +131,7 @@ impl Timestamp {
 impl Timestamp {
     const PRIMITIVE_UNIX_EPOCH: PrimitiveDateTime = time::macros::datetime!(1970 - 01 - 01 00:00);
 
+    /// Unix Epoch -- 1970-01-01 Midnight
     pub const UNIX_EPOCH: Self = Timestamp(Self::PRIMITIVE_UNIX_EPOCH);
 
     pub fn from_unix_timestamp(seconds: i64) -> Self {
@@ -146,20 +164,27 @@ impl Timestamp {
         millis
     }
 
-    /// Format timestamp to ISO8061 with full punctuation
+    /// Format timestamp to ISO8061 with full punctuation, see [Full](formats::Full) for more information.
     pub fn format(&self) -> TimestampStr<Full> {
         format::format_iso8061(self.0, UtcOffset::UTC)
     }
 
-    /// Format timestamp to ISO8061 without most punctuation
+    /// Format timestamp to ISO8061 without most punctuation, see [Short](formats::Short) for more information.
     pub fn format_short(&self) -> TimestampStr<Short> {
         format::format_iso8061(self.0, UtcOffset::UTC)
     }
 
     /// Format timestamp to ISO8061 with arbitrary UTC offset. Any offset is formatted as `+HH:MM`,
     /// and no timezone conversions are done. It is interpreted literally.
+    ///
+    /// See [FullOffset](formats::FullOffset) for more information.
     pub fn format_with_offset(&self, offset: UtcOffset) -> TimestampStr<FullOffset> {
         format::format_iso8061(self.0, offset)
+    }
+
+    /// Format timestamp to ISO8061 with extended precision to nanoseconds, see [FullNanoseconds](formats::FullNanoseconds) for more information.
+    pub fn format_nanoseconds(&self) -> TimestampStr<FullNanoseconds> {
+        format::format_iso8061(self.0, UtcOffset::UTC)
     }
 
     /// Parse to UTC timestamp from any ISO8061 string. Offsets are applied during parsing.

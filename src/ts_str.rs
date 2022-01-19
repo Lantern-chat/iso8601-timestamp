@@ -12,18 +12,22 @@ pub trait TimestampStrStorage: sealed::Sealed {
 
     const IS_FULL: bool;
     const HAS_OFFSET: bool;
+    const PRECISION: usize;
 }
 
 /// Shorthand format without punctuation, (`YYYYMMDDTHHmmss.SSSZ`)
 pub struct Short;
-/// Full ISO8061 format with UTC offset, (`YYYY-MM-DDTHH:mm:ss.SSSZ`) with character literal `Z` meaning UTC
+/// Full ISO8061 format without offset, (`YYYY-MM-DDTHH:mm:ss.SSSZ`) with character literal `Z` meaning UTC
 pub struct Full;
 /// Full ISO8061 format with hour/minute timezone offset, (`YYYY-MM-DDTHH:mm:ss.SSS+HZ:MZ`) with offset at end
 pub struct FullOffset;
+/// Full ISO8061 format without offset, but to nanosecond precision, (`YYYY-MM-DDTHH:mm:ss.SSSSSSSSSZ`)
+pub struct FullNanoseconds;
 
 impl sealed::Sealed for Short {}
 impl sealed::Sealed for Full {}
 impl sealed::Sealed for FullOffset {}
+impl sealed::Sealed for FullNanoseconds {}
 
 impl TimestampStrStorage for Short {
     type Length = generic_array::typenum::consts::U20;
@@ -36,6 +40,7 @@ impl TimestampStrStorage for Short {
 
     const IS_FULL: bool = false;
     const HAS_OFFSET: bool = false;
+    const PRECISION: usize = 3;
 }
 
 impl TimestampStrStorage for Full {
@@ -49,6 +54,7 @@ impl TimestampStrStorage for Full {
 
     const IS_FULL: bool = true;
     const HAS_OFFSET: bool = false;
+    const PRECISION: usize = 3;
 }
 
 impl TimestampStrStorage for FullOffset {
@@ -62,6 +68,21 @@ impl TimestampStrStorage for FullOffset {
 
     const IS_FULL: bool = true;
     const HAS_OFFSET: bool = true;
+    const PRECISION: usize = 3;
+}
+
+impl TimestampStrStorage for FullNanoseconds {
+    type Length = generic_array::typenum::consts::U30;
+
+    #[inline(always)]
+    fn init() -> GenericArray<u8, Self::Length> {
+        //nericArray::from(*b"YYYY-MM-DDTHH:mm:ss.SSSSSSSSSZ")
+        GenericArray::from(*b"0000-00-00T00:00:00.000000000Z")
+    }
+
+    const IS_FULL: bool = true;
+    const HAS_OFFSET: bool = false;
+    const PRECISION: usize = 9;
 }
 
 /// Fixed-size inline string storage that exactly fits the formatted timestamp
