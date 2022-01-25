@@ -54,9 +54,11 @@ pub fn format_iso8061<S: TimestampStrStorage>(ts: PrimitiveDateTime, offset: Utc
 
             let buf = buf.as_mut_ptr().add(pos);
 
-            // process 2 digits per iteration, this loop will be unrolled
+            // process 2 digits per iteration, this loop will likely be unrolled
             while len >= 2 {
-                let d1 = value % 100;
+                // skip modulus if on last 2 digits, made non-branching when unrolled
+                let d1 = if len > 2 { value % 100 } else { value };
+
                 len -= 2;
                 buf.add(len).copy_from_nonoverlapping(lookup.add(d1 as usize) as *const u8, 2);
 
