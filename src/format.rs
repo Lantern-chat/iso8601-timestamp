@@ -30,11 +30,11 @@ use core::arch::x86::{_mm_prefetch, _MM_HINT_T0};
 #[allow(unused_assignments)]
 #[inline(always)]
 pub fn format_iso8061<S: TimestampStrStorage>(ts: PrimitiveDateTime, offset: UtcOffset) -> TimestampStr<S> {
-    // prefetch the table while datetime parts are being destructured
     let lookup = LOOKUP.as_ptr();
-    if cfg!(any(target_arch = "x86_64", target_arch = "x86")) {
-        unsafe { _mm_prefetch::<_MM_HINT_T0>(lookup as _) }
-    }
+
+    // prefetch the table while datetime parts are being destructured
+    #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+    unsafe { _mm_prefetch::<_MM_HINT_T0>(lookup as _) }
 
     // decompose timestamp
     //let (year, month, day) = get_ymd(ts.date());

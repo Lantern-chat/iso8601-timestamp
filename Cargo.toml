@@ -1,6 +1,6 @@
 [package]
 name = "iso8061-timestamp"
-version = "0.1.2"
+version = "0.1.3"
 authors = ["novacrazy <novacrazy@gmail.com>"]
 edition = "2018"
 description = "High-performance ISO8061 Timestamp formatting and parsing"
