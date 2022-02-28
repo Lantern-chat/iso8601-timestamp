@@ -306,7 +306,7 @@ mod serde_impl {
                 }
             }
 
-            deserializer.deserialize_str(TsVisitor)
+            deserializer.deserialize_any(TsVisitor)
         }
     }
 }

@@ -29,6 +29,8 @@ generic-array = "0.14.4"
 time = { version = "0.3", features = ["macros", "parsing", "formatting"] }
 criterion = "0.3"
 chrono = "0.4"
+ciborium = "0.2"
+serde = { version = "1", features = ["derive"] }
 
 [[bench]]
 name = "timestamp"
