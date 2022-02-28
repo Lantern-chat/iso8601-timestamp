@@ -74,7 +74,7 @@ pub use ts_str::TimestampStr;
 
 /// Timestamp formats
 pub mod formats {
-    pub use crate::ts_str::{Full, FullOffset, Short, FullNanoseconds};
+    pub use crate::ts_str::{Full, FullNanoseconds, FullOffset, Short};
 }
 
 /// UTC Timestamp with nanosecond precision, millisecond-precision when serialized to serde (JSON).
@@ -289,11 +289,20 @@ mod serde_impl {
                     }
                 }
 
+                #[inline]
                 fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
                 where
                     E: Error,
                 {
                     Ok(Timestamp::from_unix_timestamp_ms(v))
+                }
+
+                #[inline]
+                fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
+                where
+                    E: Error,
+                {
+                    Ok(Timestamp::UNIX_EPOCH + std::time::Duration::from_secs(v))
                 }
             }
 
