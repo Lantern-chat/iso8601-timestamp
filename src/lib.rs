@@ -302,7 +302,7 @@ mod serde_impl {
                 where
                     E: Error,
                 {
-                    Ok(Timestamp::UNIX_EPOCH + std::time::Duration::from_secs(v))
+                    Ok(Timestamp::UNIX_EPOCH + std::time::Duration::from_millis(v))
                 }
             }
 
