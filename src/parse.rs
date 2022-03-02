@@ -12,15 +12,10 @@ trait FastParse: Sized {
 fn parse_2(s: &[u8]) -> u16 {
     unsafe { assume!(s.len() == 2) };
 
-    let zero: u16 = 0x3030;
-
     let mut buf = [0; 2];
     buf.copy_from_slice(s);
 
-    let digits = u16::from_le_bytes(buf).wrapping_sub(zero);
-
-    //println!("DIGITS: {:04X}", digits);
-
+    let digits = u16::from_le_bytes(buf);
     ((digits & 0x0f00) >> 8) + ((digits & 0x0f) * 10)
 }
 
@@ -28,12 +23,10 @@ fn parse_2(s: &[u8]) -> u16 {
 fn parse_4(s: &[u8]) -> u16 {
     unsafe { assume!(s.len() == 4) };
 
-    let zero: u32 = 0x30303030;
-
     let mut buf = [0; 4];
     buf.copy_from_slice(s);
 
-    let mut digits = u32::from_le_bytes(buf).wrapping_sub(zero);
+    let mut digits = u32::from_le_bytes(buf);
     digits = ((digits & 0x0f000f00) >> 8) + ((digits & 0x000f000f) * 10);
     digits = ((digits & 0x00ff00ff) >> 16) + ((digits & 0x000000ff) * 100);
     digits as u16
@@ -43,9 +36,7 @@ fn parse_4(s: &[u8]) -> u16 {
 fn parse_3(s: &[u8]) -> u16 {
     unsafe { assume!(s.len() == 3) };
 
-    let hundreds = (s[0] - b'0') as u16 * 100;
-
-    hundreds + parse_2(&s[1..3])
+    parse_2(&s[1..3]) + (s[0] - b'0') as u16 * 100
 }
 
 // TODO: Parse 5 and 6?
@@ -267,15 +258,28 @@ mod tests {
 
     #[test]
     fn test_parse_int2() {
-        let res = parse_2(b"12");
+        for i in 0..=99 {
+            let s = format!("{:02}", i);
+            let res = parse_2(s.as_bytes());
+            assert_eq!(res, i);
+        }
+    }
 
-        assert_eq!(res, 12);
+    #[test]
+    fn test_parse_int3() {
+        for i in 0..=999 {
+            let s = format!("{:03}", i);
+            let res = parse_3(s.as_bytes());
+            assert_eq!(res, i);
+        }
     }
 
     #[test]
     fn test_parse_int4() {
-        let res = parse_4(b"1234");
-
-        assert_eq!(res, 1234);
+        for i in 0..=9999 {
+            let s = format!("{:04}", i);
+            let res = parse_4(s.as_bytes());
+            assert_eq!(res, i);
+        }
     }
 }
