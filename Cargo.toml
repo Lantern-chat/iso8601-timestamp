@@ -18,6 +18,7 @@ bson = []
 pg = ["postgres-types", "bytes", "std"]
 schema = ["schemars"]
 nightly = []
+verify = [] # Verify numeric input during parsing
 default = ["std", "serde"]
 
 [dependencies]

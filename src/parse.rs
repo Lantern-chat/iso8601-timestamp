@@ -8,35 +8,94 @@ trait FastParse: Sized {
     fn parse(s: &[u8]) -> Option<Self>;
 }
 
-#[inline]
-fn parse_2(s: &[u8]) -> u16 {
-    unsafe { assume!(s.len() == 2) };
+#[inline(always)]
+unsafe fn copy_buf<const N: usize>(s: &[u8]) -> [u8; N] {
+    assume!(s.len() == N);
 
-    let mut buf = [0; 2];
+    let mut buf = [0; N];
     buf.copy_from_slice(s);
+    buf
+}
 
-    let digits = u16::from_le_bytes(buf);
-    ((digits & 0x0f00) >> 8) + ((digits & 0x0f) * 10)
+#[inline(always)]
+#[allow(dead_code)]
+fn overflows2(x: u16) -> bool {
+    const U: u16 = !0 / 255;
+    0 != (x.wrapping_add(U * (127 - 9)) | x) & (U * 128)
+}
+
+/// https://graphics.stanford.edu/~seander/bithacks.html#HasMoreInWord
+#[inline(always)]
+#[allow(dead_code)]
+fn overflows4(x: u32) -> bool {
+    const U: u32 = !0 / 255;
+    0 != (x.wrapping_add(U * (127 - 9)) | x) & (U * 128)
+}
+
+#[allow(dead_code)]
+#[inline(always)]
+fn overflows(s: &[u8]) -> bool {
+    let mut overflow = false;
+
+    for &byte in s {
+        overflow |= (byte < b'0') || (byte > b'9');
+    }
+
+    overflow
 }
 
 #[inline]
-fn parse_4(s: &[u8]) -> u16 {
-    unsafe { assume!(s.len() == 4) };
+fn parse_2(s: &[u8]) -> Option<u16> {
+    let mut digits = u16::from_le_bytes(unsafe { copy_buf::<2>(s) });
 
-    let mut buf = [0; 4];
-    buf.copy_from_slice(s);
+    #[cfg(feature = "verify")]
+    if overflows(s) {
+        return None;
+    }
 
-    let mut digits = u32::from_le_bytes(buf);
+    // NOTE: This may be slower than brute-force
+    //if overflowing2(digits - 0x3030) {
+    //    return None;
+    //}
+
+    digits = ((digits & 0x0f00) >> 8) + ((digits & 0x0f) * 10);
+
+    Some(digits)
+}
+
+#[inline]
+fn parse_4(s: &[u8]) -> Option<u16> {
+    let mut digits = u32::from_le_bytes(unsafe { copy_buf::<4>(s) });
+
+    #[cfg(feature = "verify")]
+    if overflowing4(digits - 0x30303030) {
+        return None;
+    }
+
     digits = ((digits & 0x0f000f00) >> 8) + ((digits & 0x000f000f) * 10);
     digits = ((digits & 0x00ff00ff) >> 16) + ((digits & 0x000000ff) * 100);
-    digits as u16
+
+    Some(digits as u16)
 }
 
 #[inline]
-fn parse_3(s: &[u8]) -> u16 {
+fn parse_3(s: &[u8]) -> Option<u16> {
     unsafe { assume!(s.len() == 3) };
 
-    parse_2(&s[1..3]) + (s[0] - b'0') as u16 * 100
+    let hundreds = s[0].wrapping_sub(b'0') as u16;
+
+    #[allow(unused_mut)]
+    let mut overflow = false;
+
+    #[cfg(feature = "verify")]
+    {
+        overflow = hundreds > 9;
+    }
+
+    match parse_2(&s[1..3]) {
+        Some(tens) if !overflow => Some(tens + hundreds * 100),
+        _ => None,
+    }
 }
 
 // TODO: Parse 5 and 6?
@@ -46,14 +105,23 @@ macro_rules! impl_fp {
         impl FastParse for $t {
             #[inline]
             fn parse(s: &[u8]) -> Option<Self> {
+                #[cfg(feature = "verify")]
                 match s.len() {
-                    2 => return Some(parse_2(s) as $t),
-                    4 => return Some(parse_4(s) as $t),
-                    3 => return Some(parse_3(s) as $t),
-                    //1 => return Some((s[0].wrapping_sub(b'0')) as $t),
+                    2 => return parse_2(s).map(|v| v as $t),
+                    4 => return parse_4(s).map(|v| v as $t),
+                    3 => return parse_3(s).map(|v| v as $t),
                     _ => {}
                 }
 
+                #[cfg(not(feature = "verify"))]
+                unsafe {
+                    match s.len() {
+                        2 => return Some(parse_2(s).unwrap_unchecked().min(99) as $t),
+                        4 => return Some(parse_4(s).unwrap_unchecked().min(999) as $t),
+                        3 => return Some(parse_3(s).unwrap_unchecked().min(9999) as $t),
+                        _ => {}
+                    }
+                }
 
                 let mut num = 0;
                 let mut overflow = false;
@@ -261,7 +329,7 @@ mod tests {
         for i in 0..=99 {
             let s = format!("{:02}", i);
             let res = parse_2(s.as_bytes());
-            assert_eq!(res, i);
+            assert_eq!(res, Some(i));
         }
     }
 
@@ -270,7 +338,7 @@ mod tests {
         for i in 0..=999 {
             let s = format!("{:03}", i);
             let res = parse_3(s.as_bytes());
-            assert_eq!(res, i);
+            assert_eq!(res, Some(i));
         }
     }
 
@@ -279,7 +347,37 @@ mod tests {
         for i in 0..=9999 {
             let s = format!("{:04}", i);
             let res = parse_4(s.as_bytes());
-            assert_eq!(res, i);
+            assert_eq!(res, Some(i));
+        }
+    }
+
+    #[test]
+    fn test_is_digit() {
+        fn is_digit_simple(i: &[u8]) -> bool {
+            for &b in i {
+                if b > 9 {
+                    return false;
+                }
+            }
+            true
+        }
+
+        for i in 0..u16::MAX {
+            assert_eq!(
+                !overflows2(i),
+                is_digit_simple(&i.to_le_bytes()),
+                "{:?}",
+                i.to_le_bytes()
+            );
+        }
+
+        for i in 0..u32::MAX {
+            assert_eq!(
+                !overflows4(i),
+                is_digit_simple(&i.to_le_bytes()),
+                "{:?}",
+                i.to_le_bytes()
+            );
         }
     }
 }

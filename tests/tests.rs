@@ -80,3 +80,10 @@ fn test_parse_nanoseconds() {
 
     assert_eq!(parsed, expected);
 }
+
+#[test]
+fn test_invalid() {
+    let parsed = Timestamp::parse("-868686868");
+
+    assert!(parsed.is_none());
+}
