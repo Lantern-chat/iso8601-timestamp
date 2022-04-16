@@ -14,6 +14,7 @@ repository = "https://github.com/Lantern-chat/iso8061-timestamp"
 
 [features]
 std = []
+bson = []
 pg = ["postgres-types", "bytes", "std"]
 schema = ["schemars"]
 nightly = []

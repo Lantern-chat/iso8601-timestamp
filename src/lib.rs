@@ -243,6 +243,8 @@ where
 
 #[cfg(feature = "serde")]
 mod serde_impl {
+    #[cfg(feature = "bson")]
+    use serde::de::MapAccess;
     use serde::de::{Deserialize, Deserializer, Error, Visitor};
     use serde::ser::{Serialize, Serializer};
 
@@ -286,6 +288,34 @@ mod serde_impl {
                     match Timestamp::parse(v) {
                         Some(ts) => Ok(ts),
                         None => Err(E::custom("Invalid Format")),
+                    }
+                }
+
+                #[cfg(feature = "bson")]
+                fn visit_map<M>(self, mut access: M) -> Result<Self::Value, M::Error>
+                where
+                    M: MapAccess<'de>,
+                {
+                    // In the MongoDB database, or generally with BSON, dates
+                    // are serialised into `{ $date: string }` where `$date`
+                    // is what we actually want.
+
+                    // Fish out the first entry we can find.
+                    let (key, v) = access.next_entry::<String, String>()
+                        .map_err(|_| M::Error::custom("Map Is Empty"))?
+                        .ok_or_else(|| M::Error::custom("Invalid Map"))?;
+
+                    // Match `$date` and only date.
+                    if key == "$date" {
+                        // Continue as normal with the given value.
+                        match Timestamp::parse(&v) {
+                            Some(ts) => Ok(ts),
+                            None => Err(M::Error::custom("Invalid Format")),
+                        }
+                    } else {
+                        // We don't expect anything else in the map in any case,
+                        // but throw an error if we do encounter anything weird.
+                        Err(M::Error::custom("Expected only key `$date` in map"))
                     }
                 }
 

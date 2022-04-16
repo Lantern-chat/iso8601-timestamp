@@ -49,3 +49,6 @@ Similarly, when deserializing, it supports either an ISO8061 string or an `i64` 
 
 * `schema`
     - Enables implementation for `JsonSchema` for generating a JSON schema on the fly using `schemars`.
+
+* `bson`
+    - Enables `visit_map` implementation to handle deserialising BSON (MongoDB) DateTime format, `{ $date: string }`.
