@@ -46,3 +46,6 @@ Similarly, when deserializing, it supports either an ISO8061 string or an `i64` 
 
 * `pg`
     - Enables `ToSql`/`FromSql` implementations for `Timestamp` so it can be directly stored/fetched from a PostgreSQL database using `rust-postgres`
+
+* `schema`
+    - Enables implementation for `JsonSchema` for generating a JSON schema on the fly using `schemars`.

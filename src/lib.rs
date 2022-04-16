@@ -344,3 +344,30 @@ mod pg_impl {
         accepts!(TIMESTAMP, TIMESTAMPTZ);
     }
 }
+
+#[cfg(feature = "schema")]
+mod schema_impl {
+    use schemars::_serde_json::json;
+    use schemars::schema::{InstanceType, Metadata, Schema, SchemaObject, SingleOrVec};
+    use schemars::JsonSchema;
+
+    use super::Timestamp;
+
+    impl JsonSchema for Timestamp {
+        fn schema_name() -> String {
+            "ISO8601 Timestamp".to_string()
+        }
+
+        fn json_schema(_gen: &mut schemars::gen::SchemaGenerator) -> Schema {
+            Schema::Object(SchemaObject {
+                metadata: Some(Box::new(Metadata {
+                    description: Some("ISO8601 formatted timestamp".to_string()),
+                    examples: vec![json!("1970-01-01T00:00:00Z")],
+                    ..Default::default()
+                })),
+                instance_type: Some(SingleOrVec::Single(Box::new(InstanceType::String))),
+                ..Default::default()
+            })
+        }
+    }
+}

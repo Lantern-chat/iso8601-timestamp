@@ -15,6 +15,7 @@ repository = "https://github.com/Lantern-chat/iso8061-timestamp"
 [features]
 std = []
 pg = ["postgres-types", "bytes", "std"]
+schema = ["schemars"]
 nightly = []
 default = ["std", "serde"]
 
@@ -24,6 +25,7 @@ time = { version = "0.3", features = ["macros"] }
 postgres-types = { optional = true, version = "0.2.2", features = ["with-time-0_3"] }
 bytes = { optional = true, version = "1.1.0" }
 generic-array = "0.14.4"
+schemars = { optional = true, version = "0.8.8" }
 
 [dev-dependencies]
 time = { version = "0.3", features = ["macros", "parsing", "formatting"] }
@@ -43,4 +45,4 @@ lto = 'fat'
 codegen-units = 1
 
 [package.metadata.docs.rs]
-features = ["serde", "pg"]
+features = ["serde", "pg", "schema"]
