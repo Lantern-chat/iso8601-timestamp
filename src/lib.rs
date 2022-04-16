@@ -243,7 +243,7 @@ where
 
 #[cfg(feature = "serde")]
 mod serde_impl {
-    use serde::de::{Deserialize, Deserializer, Error, Visitor};
+    use serde::de::{Deserialize, Deserializer, Error, Visitor, MapAccess};
     use serde::ser::{Serialize, Serializer};
 
     use super::Timestamp;
@@ -286,6 +286,24 @@ mod serde_impl {
                     match Timestamp::parse(v) {
                         Some(ts) => Ok(ts),
                         None => Err(E::custom("Invalid Format")),
+                    }
+                }
+
+                fn visit_map<M>(self, mut access: M) -> Result<Self::Value, M::Error>
+                where
+                    M: MapAccess<'de>,
+                {
+                    let (key, v) = access.next_entry::<&str, &str>()
+                        .map_err(|_| M::Error::custom("Map Is Empty"))?
+                        .ok_or_else(|| M::Error::custom("Invalid Map"))?;
+
+                    if key == "$date" {
+                        match Timestamp::parse(v) {
+                            Some(ts) => Ok(ts),
+                            None => Err(M::Error::custom("Invalid Format")),
+                        }
+                    } else {
+                        Err(M::Error::custom("Expected only key `$date` in map"))
                     }
                 }
 
