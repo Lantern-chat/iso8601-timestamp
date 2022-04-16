@@ -300,18 +300,33 @@ mod serde_impl {
                     // are serialised into `{ $date: string }` where `$date`
                     // is what we actually want.
 
+                    // Though in some cases if the year is < 1970 or > 9999, it will be:
+                    // `{ $date: { $numberLong: string } }` where `$numberLong` is a signed integer (as a string)
+
+                    #[derive(serde::Deserialize, Debug)]
+                    #[serde(untagged)]
+                    enum StringOrNumberLong {
+                        Num {
+                            #[serde(rename = "$numberLong")]
+                            num: String,
+                        },
+                        Str(Timestamp),
+                    }
+
                     // Fish out the first entry we can find.
-                    let (key, v) = access.next_entry::<String, String>()
-                        .map_err(|_| M::Error::custom("Map Is Empty"))?
-                        .ok_or_else(|| M::Error::custom("Invalid Map"))?;
+                    let (key, v) = access
+                        .next_entry::<String, StringOrNumberLong>()?
+                        .ok_or_else(|| M::Error::custom("Map Is Empty"))?;
 
                     // Match `$date` and only date.
                     if key == "$date" {
-                        // Continue as normal with the given value.
-                        match Timestamp::parse(&v) {
-                            Some(ts) => Ok(ts),
-                            None => Err(M::Error::custom("Invalid Format")),
-                        }
+                        Ok(match v {
+                            StringOrNumberLong::Str(ts) => ts,
+                            StringOrNumberLong::Num { num } => Timestamp::from_unix_timestamp_ms(
+                                num.parse::<i64>()
+                                    .map_err(|_| M::Error::custom("Invalid Number"))?,
+                            ),
+                        })
                     } else {
                         // We don't expect anything else in the map in any case,
                         // but throw an error if we do encounter anything weird.
