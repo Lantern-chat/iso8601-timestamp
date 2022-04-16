@@ -41,6 +41,10 @@ Similarly, when deserializing, it supports either an ISO8601 string or an `i64` 
 * `serde` (default)
     - Enables serde implementations for `Timestamp` and `TimestampStr`
 
+* `verify`
+    - Verifies numeric inputs when parsing and fails when non-numeric input is found.
+    - When disabled, parsing ignores invalid input, possibly giving garbage timestamps.
+
 * `nightly`
     - Enables nightly-specific optimizations, but without it will fallback to workarounds to enable the same optimizations.
 
