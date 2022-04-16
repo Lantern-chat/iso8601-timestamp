@@ -98,8 +98,6 @@ fn parse_3(s: &[u8]) -> Option<u16> {
     }
 }
 
-// TODO: Parse 5 and 6?
-
 macro_rules! impl_fp {
     ($($t:ty),*) => {$(
         impl FastParse for $t {
@@ -108,8 +106,8 @@ macro_rules! impl_fp {
                 #[cfg(feature = "verify")]
                 match s.len() {
                     2 => return parse_2(s).map(|v| v as $t),
-                    4 => return parse_4(s).map(|v| v as $t),
                     3 => return parse_3(s).map(|v| v as $t),
+                    4 => return parse_4(s).map(|v| v as $t),
                     _ => {}
                 }
 
@@ -117,8 +115,8 @@ macro_rules! impl_fp {
                 unsafe {
                     match s.len() {
                         2 => return Some(parse_2(s).unwrap_unchecked().min(99) as $t),
-                        4 => return Some(parse_4(s).unwrap_unchecked().min(999) as $t),
-                        3 => return Some(parse_3(s).unwrap_unchecked().min(9999) as $t),
+                        3 => return Some(parse_3(s).unwrap_unchecked().min(999) as $t),
+                        4 => return Some(parse_4(s).unwrap_unchecked().min(9999) as $t),
                         _ => {}
                     }
                 }
