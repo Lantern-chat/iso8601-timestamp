@@ -1,7 +1,7 @@
-use iso8061_timestamp::Timestamp;
+use iso8601_timestamp::Timestamp;
 
 #[test]
-fn test_format_iso8061() {
+fn test_format_iso8601() {
     let now = Timestamp::now_utc();
 
     let formatted = now.format();
@@ -10,7 +10,7 @@ fn test_format_iso8061() {
 }
 
 #[test]
-fn test_format_iso8061_full() {
+fn test_format_iso8601_full() {
     let now = Timestamp::now_utc();
 
     let formatted = now.format();
@@ -19,7 +19,7 @@ fn test_format_iso8061_full() {
 }
 
 #[test]
-fn test_parse_iso8061_reflex() {
+fn test_parse_iso8601_reflex() {
     let now = Timestamp::now_utc();
 
     let formatted = now.format();
@@ -32,7 +32,7 @@ fn test_parse_iso8061_reflex() {
 }
 
 #[test]
-fn test_parse_iso8061_variations() {
+fn test_parse_iso8601_variations() {
     let fixtures = [
         "2021-10-17T02:03:01+00:00",
         "2021-10-17t02:03:01+10:00",

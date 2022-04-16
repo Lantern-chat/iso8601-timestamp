@@ -75,7 +75,7 @@ macro_rules! impl_fp {
 
 impl_fp!(u8, u16, u32);
 
-pub fn parse_iso8061(ts: &str) -> Option<PrimitiveDateTime> {
+pub fn parse_iso8601(ts: &str) -> Option<PrimitiveDateTime> {
     let b = ts.as_bytes();
 
     #[inline(always)]

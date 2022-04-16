@@ -1,6 +1,6 @@
-//! ISO8061 Timestamp
+//! ISO8601 Timestamp
 //!
-//! This crate provides high-performance formatting and parsing routines for ISO8061 timestamps, primarily focused on UTC values but with support
+//! This crate provides high-performance formatting and parsing routines for ISO8601 timestamps, primarily focused on UTC values but with support
 //! for parsing (and automatically applying) UTC Offsets.
 //!
 //! The primary purpose of this is to keep the lightweight representation of timestamps within data structures, and only formatting it to
@@ -13,7 +13,7 @@
 //! ```rust,ignore
 //! use serde::{Serialize, Deserialize};
 //! use smol_str::SmolStr; // stack-allocation for small strings
-//! use iso8061_timestamp::Timestamp;
+//! use iso8601_timestamp::Timestamp;
 //!
 //! #[derive(Debug, Clone, Serialize, Deserialize)]
 //! pub struct Event {
@@ -34,7 +34,7 @@
 //! When serializing to non-human-readable formats, such as binary formats, the `Timestamp` will be written
 //! as an `i64` representing milliseconds since the Unix Epoch. This way it only uses 8 bytes instead of 24.
 //!
-//! Similarly, when deserializing, it supports either an ISO8061 string or an `i64` representing a unix timestamp in milliseconds.
+//! Similarly, when deserializing, it supports either an ISO8601 string or an `i64` representing a unix timestamp in milliseconds.
 //!
 //! ## Features
 //!
@@ -164,33 +164,33 @@ impl Timestamp {
         millis
     }
 
-    /// Format timestamp to ISO8061 with full punctuation, see [Full](formats::Full) for more information.
+    /// Format timestamp to ISO8601 with full punctuation, see [Full](formats::Full) for more information.
     pub fn format(&self) -> TimestampStr<Full> {
-        format::format_iso8061(self.0, UtcOffset::UTC)
+        format::format_iso8601(self.0, UtcOffset::UTC)
     }
 
-    /// Format timestamp to ISO8061 without most punctuation, see [Short](formats::Short) for more information.
+    /// Format timestamp to ISO8601 without most punctuation, see [Short](formats::Short) for more information.
     pub fn format_short(&self) -> TimestampStr<Short> {
-        format::format_iso8061(self.0, UtcOffset::UTC)
+        format::format_iso8601(self.0, UtcOffset::UTC)
     }
 
-    /// Format timestamp to ISO8061 with arbitrary UTC offset. Any offset is formatted as `+HH:MM`,
+    /// Format timestamp to ISO8601 with arbitrary UTC offset. Any offset is formatted as `+HH:MM`,
     /// and no timezone conversions are done. It is interpreted literally.
     ///
     /// See [FullOffset](formats::FullOffset) for more information.
     pub fn format_with_offset(&self, offset: UtcOffset) -> TimestampStr<FullOffset> {
-        format::format_iso8061(self.0, offset)
+        format::format_iso8601(self.0, offset)
     }
 
-    /// Format timestamp to ISO8061 with extended precision to nanoseconds, see [FullNanoseconds](formats::FullNanoseconds) for more information.
+    /// Format timestamp to ISO8601 with extended precision to nanoseconds, see [FullNanoseconds](formats::FullNanoseconds) for more information.
     pub fn format_nanoseconds(&self) -> TimestampStr<FullNanoseconds> {
-        format::format_iso8061(self.0, UtcOffset::UTC)
+        format::format_iso8601(self.0, UtcOffset::UTC)
     }
 
-    /// Parse to UTC timestamp from any ISO8061 string. Offsets are applied during parsing.
+    /// Parse to UTC timestamp from any ISO8601 string. Offsets are applied during parsing.
     #[inline]
     pub fn parse(ts: &str) -> Option<Self> {
-        parse::parse_iso8061(ts).map(Timestamp)
+        parse::parse_iso8601(ts).map(Timestamp)
     }
 
     /// Convert to `time::OffsetDateTime` with the given offset.
@@ -276,7 +276,7 @@ mod serde_impl {
                 type Value = Timestamp;
 
                 fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                    formatter.write_str("an ISO8061 Timestamp")
+                    formatter.write_str("an ISO8601 Timestamp")
                 }
 
                 fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>

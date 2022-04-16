@@ -17,11 +17,11 @@ pub trait TimestampStrStorage: sealed::Sealed {
 
 /// Shorthand format without punctuation, (`YYYYMMDDTHHmmss.SSSZ`)
 pub struct Short;
-/// Full ISO8061 format without offset, (`YYYY-MM-DDTHH:mm:ss.SSSZ`) with character literal `Z` meaning UTC
+/// Full ISO8601 format without offset, (`YYYY-MM-DDTHH:mm:ss.SSSZ`) with character literal `Z` meaning UTC
 pub struct Full;
-/// Full ISO8061 format with hour/minute timezone offset, (`YYYY-MM-DDTHH:mm:ss.SSS+HZ:MZ`) with offset at end
+/// Full ISO8601 format with hour/minute timezone offset, (`YYYY-MM-DDTHH:mm:ss.SSS+HZ:MZ`) with offset at end
 pub struct FullOffset;
-/// Full ISO8061 format without offset, but to nanosecond precision, (`YYYY-MM-DDTHH:mm:ss.SSSSSSSSSZ`)
+/// Full ISO8601 format without offset, but to nanosecond precision, (`YYYY-MM-DDTHH:mm:ss.SSSSSSSSSZ`)
 pub struct FullNanoseconds;
 
 impl sealed::Sealed for Short {}

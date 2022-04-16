@@ -29,7 +29,7 @@ use core::arch::x86::{_mm_prefetch, _MM_HINT_T0};
 #[rustfmt::skip]
 #[allow(unused_assignments)]
 #[inline(always)]
-pub fn format_iso8061<S: TimestampStrStorage>(ts: PrimitiveDateTime, offset: UtcOffset) -> TimestampStr<S> {
+pub fn format_iso8601<S: TimestampStrStorage>(ts: PrimitiveDateTime, offset: UtcOffset) -> TimestampStr<S> {
     let lookup = LOOKUP.as_ptr();
 
     // prefetch the table while datetime parts are being destructured
@@ -117,7 +117,7 @@ mod tests {
         let ts: PrimitiveDateTime = time::macros::datetime!(2014-4-12 4:00 PM);
         let o = UtcOffset::from_hms(-4, 30, 0).unwrap();
 
-        let formatted = format_iso8061::<FullOffset>(ts, o);
+        let formatted = format_iso8601::<FullOffset>(ts, o);
 
         assert_eq!("2014-04-12T16:00:00.000-04:30", &*formatted);
     }

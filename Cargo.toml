@@ -1,16 +1,16 @@
 [package]
-name = "iso8061-timestamp"
+name = "iso8601-timestamp"
 version = "0.1.6"
 authors = ["novacrazy <novacrazy@gmail.com>"]
 edition = "2018"
-description = "High-performance ISO8061 Timestamp formatting and parsing"
-keywords = ["date", "time", "iso8061", "formatting", "parsing"]
+description = "High-performance ISO8601 Timestamp formatting and parsing"
+keywords = ["date", "time", "iso8601", "formatting", "parsing"]
 readme = "README.md"
 categories = ["date-and-time", "no-std", "parser-implementations", "value-formatting"]
 license = "MIT OR Apache-2.0"
 include = ["src/**/*", "LICENSE-*", "README.md"]
-documentation = "https://docs.rs/iso8061-timestamp"
-repository = "https://github.com/Lantern-chat/iso8061-timestamp"
+documentation = "https://docs.rs/iso8601-timestamp"
+repository = "https://github.com/Lantern-chat/iso8601-timestamp"
 
 [features]
 std = []

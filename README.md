@@ -1,7 +1,7 @@
-ISO8061 Timestamp
+ISO8601 Timestamp
 =================
 
-This crate provides high-performance formatting and parsing routines for ISO8061 timestamps, primarily focused on UTC values but with support for parsing (and automatically applying) UTC Offsets.
+This crate provides high-performance formatting and parsing routines for ISO8601 timestamps, primarily focused on UTC values but with support for parsing (and automatically applying) UTC Offsets.
 
 The primary purpose of this is to keep the lightweight representation of timestamps within data structures, and only formatting it to a string when needed via Serde.
 
@@ -11,7 +11,7 @@ Example:
 ```rust
 use serde::{Serialize, Deserialize};
 use smol_str::SmolStr; // stack-allocation for small strings
-use iso8061_timestamp::Timestamp;
+use iso8601_timestamp::Timestamp;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Event {
@@ -31,7 +31,7 @@ when serialized to JSON could result in:
 
 When serializing to non-human-readable formats, such as binary formats, the `Timestamp` will be written as an `i64` representing milliseconds since the Unix Epoch. This way it only uses 8 bytes instead of 24.
 
-Similarly, when deserializing, it supports either an ISO8061 string or an `i64` representing a unix timestamp in milliseconds.
+Similarly, when deserializing, it supports either an ISO8601 string or an `i64` representing a unix timestamp in milliseconds.
 
 ## Features
 
