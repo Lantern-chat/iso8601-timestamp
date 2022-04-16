@@ -306,11 +306,11 @@ mod serde_impl {
                     #[derive(serde::Deserialize, Debug)]
                     #[serde(untagged)]
                     enum StringOrNumberLong {
+                        Str(Timestamp),
                         Num {
                             #[serde(rename = "$numberLong")]
                             num: String,
                         },
-                        Str(Timestamp),
                     }
 
                     // Fish out the first entry we can find.
@@ -400,13 +400,13 @@ mod schema_impl {
 
     impl JsonSchema for Timestamp {
         fn schema_name() -> String {
-            "ISO8601 Timestamp".to_string()
+            "ISO8601 Timestamp".to_owned()
         }
 
         fn json_schema(_gen: &mut schemars::gen::SchemaGenerator) -> Schema {
             Schema::Object(SchemaObject {
                 metadata: Some(Box::new(Metadata {
-                    description: Some("ISO8601 formatted timestamp".to_string()),
+                    description: Some("ISO8601 formatted timestamp".to_owned()),
                     examples: vec![json!("1970-01-01T00:00:00Z")],
                     ..Default::default()
                 })),

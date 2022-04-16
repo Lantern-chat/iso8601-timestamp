@@ -54,7 +54,7 @@ fn parse_2(s: &[u8]) -> Option<u16> {
     }
 
     // NOTE: This may be slower than brute-force
-    //if overflowing2(digits - 0x3030) {
+    //if overflows2(digits - 0x3030) {
     //    return None;
     //}
 
@@ -68,7 +68,7 @@ fn parse_4(s: &[u8]) -> Option<u16> {
     let mut digits = u32::from_le_bytes(unsafe { copy_buf::<4>(s) });
 
     #[cfg(feature = "verify")]
-    if overflowing4(digits - 0x30303030) {
+    if overflows4(digits - 0x30303030) {
         return None;
     }
 
@@ -84,7 +84,7 @@ fn parse_3(s: &[u8]) -> Option<u16> {
 
     let hundreds = s[0].wrapping_sub(b'0') as u16;
 
-    #[allow(unused_mut)]
+    #[allow(unused_mut, unused_assignments)]
     let mut overflow = false;
 
     #[cfg(feature = "verify")]
