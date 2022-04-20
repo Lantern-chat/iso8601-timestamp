@@ -420,6 +420,7 @@ mod schema_impl {
                     examples: vec![json!("1970-01-01T00:00:00Z")],
                     ..Default::default()
                 })),
+                format: Some("date-time".to_owned()),
                 instance_type: Some(SingleOrVec::Single(Box::new(InstanceType::String))),
                 ..Default::default()
             })
