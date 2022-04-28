@@ -114,9 +114,9 @@ macro_rules! impl_fp {
                 #[cfg(not(feature = "verify"))]
                 unsafe {
                     match s.len() {
-                        2 => return Some(parse_2(s).unwrap_unchecked().min(99) as $t),
-                        3 => return Some(parse_3(s).unwrap_unchecked().min(999) as $t),
-                        4 => return Some(parse_4(s).unwrap_unchecked().min(9999) as $t),
+                        2 => return Some(parse_2(s).unwrap_unchecked() as $t),
+                        3 => return Some(parse_3(s).unwrap_unchecked() as $t),
+                        4 => return Some(parse_4(s).unwrap_unchecked() as $t),
                         _ => {}
                     }
                 }
@@ -175,9 +175,6 @@ pub fn parse_iso8601(ts: &str) -> Option<PrimitiveDateTime> {
     offset += 2; // DD
 
     //println!("DAY: {}", day);
-
-    // only parsed 4 digits
-    unsafe { assume!(year <= 9999) };
 
     let ymd = Date::from_calendar_date(year as i32, Month::try_from(month).ok()?, day).ok()?;
 
