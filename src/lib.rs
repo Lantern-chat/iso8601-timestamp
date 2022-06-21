@@ -78,13 +78,13 @@ mod format;
 mod parse;
 mod ts_str;
 
-use ts_str::{Full, FullNanoseconds, FullOffset, Short};
+use ts_str::{Full, FullMicroseconds, FullNanoseconds, FullOffset, Short};
 
 pub use ts_str::TimestampStr;
 
 /// Timestamp formats
 pub mod formats {
-    pub use crate::ts_str::{Full, FullNanoseconds, FullOffset, Short};
+    pub use crate::ts_str::{Full, FullMicroseconds, FullNanoseconds, FullOffset, Short};
 }
 
 /// UTC Timestamp with nanosecond precision, millisecond-precision when serialized to serde (JSON).
@@ -194,6 +194,11 @@ impl Timestamp {
 
     /// Format timestamp to ISO8601 with extended precision to nanoseconds, see [FullNanoseconds](formats::FullNanoseconds) for more information.
     pub fn format_nanoseconds(&self) -> TimestampStr<FullNanoseconds> {
+        format::format_iso8601(self.0, UtcOffset::UTC)
+    }
+
+    /// Format timestamp to ISO8601 with extended precision to microseconds, see [FullMicroseconds](formats::FullMicroseconds) for more information.
+    pub fn format_microseconds(&self) -> TimestampStr<FullMicroseconds> {
         format::format_iso8601(self.0, UtcOffset::UTC)
     }
 

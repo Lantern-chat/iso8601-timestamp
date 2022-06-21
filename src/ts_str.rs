@@ -23,11 +23,14 @@ pub struct Full;
 pub struct FullOffset;
 /// Full ISO8601 format without offset, but to nanosecond precision, (`YYYY-MM-DDTHH:mm:ss.SSSSSSSSSZ`)
 pub struct FullNanoseconds;
+/// Full ISO8601 format without offset, but to microsecond precision, (`YYYY-MM-DDTHH:mm:ss.SSSSSSZ`)
+pub struct FullMicroseconds;
 
 impl sealed::Sealed for Short {}
 impl sealed::Sealed for Full {}
 impl sealed::Sealed for FullOffset {}
 impl sealed::Sealed for FullNanoseconds {}
+impl sealed::Sealed for FullMicroseconds {}
 
 impl TimestampStrStorage for Short {
     type Length = generic_array::typenum::consts::U20;
@@ -83,6 +86,20 @@ impl TimestampStrStorage for FullNanoseconds {
     const IS_FULL: bool = true;
     const HAS_OFFSET: bool = false;
     const PRECISION: usize = 9;
+}
+
+impl TimestampStrStorage for FullMicroseconds {
+    type Length = generic_array::typenum::consts::U27;
+
+    #[inline(always)]
+    fn init() -> GenericArray<u8, Self::Length> {
+        //nericArray::from(*b"YYYY-MM-DDTHH:mm:ss.SSSSSSZ")
+        GenericArray::from(*b"0000-00-00T00:00:00.000000Z")
+    }
+
+    const IS_FULL: bool = true;
+    const HAS_OFFSET: bool = false;
+    const PRECISION: usize = 6;
 }
 
 /// Fixed-size inline string storage that exactly fits the formatted timestamp

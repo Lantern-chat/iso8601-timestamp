@@ -87,6 +87,7 @@ pub fn format_iso8601<S: TimestampStrStorage>(ts: PrimitiveDateTime, offset: Utc
 
     match S::PRECISION {
         3 => write_num!(nanoseconds / 1_000_000, 3, 999), // SSS
+        6 => write_num!(nanoseconds / 1_000, 6, 999_999), // SSSSSS
         9 => write_num!(nanoseconds, 9, 999_999_999),     // SSSSSSSSS
         _ => unsafe { core::hint::unreachable_unchecked() }
     }

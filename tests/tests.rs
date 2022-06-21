@@ -13,9 +13,9 @@ fn test_format_iso8601() {
 fn test_format_iso8601_full() {
     let now = Timestamp::now_utc();
 
-    let formatted = now.format();
-
-    println!("{}", formatted);
+    println!("{}", now.format());
+    println!("{}", now.format_nanoseconds());
+    println!("{}", now.format_microseconds());
 }
 
 #[test]
