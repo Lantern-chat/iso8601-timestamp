@@ -87,3 +87,15 @@ fn test_invalid() {
 
     assert!(parsed.is_none());
 }
+
+#[test]
+fn test_offset() {
+    let ts: time::PrimitiveDateTime = time::macros::datetime!(2014-4-12 4:00 PM);
+    let o = time::UtcOffset::from_hms(-4, 30, 0).unwrap();
+
+    let ts = Timestamp::from(ts);
+
+    let formatted = ts.format_with_offset(o);
+
+    assert_eq!("2014-04-12T16:00:00.000-04:30", &*formatted);
+}

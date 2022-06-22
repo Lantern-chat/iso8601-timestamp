@@ -6,7 +6,7 @@
 //! The primary purpose of this is to keep the lightweight representation of timestamps within data structures, and only formatting it to
 //! a string when needed via Serde.
 //!
-//! The [Timestamp] struct is only 12 bytes, while the formatted strings can be as large as 29 bytes,
+//! The [Timestamp] struct is only 12 bytes, while the formatted strings can be as large as 35 bytes,
 //! and care is taken to avoid heap allocations when formatting.
 //!
 //! Example:
@@ -71,6 +71,9 @@ use std::time::SystemTime;
 
 use time::{OffsetDateTime, PrimitiveDateTime, UtcOffset};
 
+pub use generic_array::typenum;
+use typenum as t;
+
 #[macro_use]
 mod macros;
 
@@ -78,14 +81,8 @@ mod format;
 mod parse;
 mod ts_str;
 
-use ts_str::{Full, FullMicroseconds, FullNanoseconds, FullOffset, Short};
-
-pub use ts_str::TimestampStr;
-
-/// Timestamp formats
-pub mod formats {
-    pub use crate::ts_str::{Full, FullMicroseconds, FullNanoseconds, FullOffset, Short};
-}
+use ts_str::IsValidFormat;
+pub use ts_str::{FormatString, TimestampStr};
 
 /// UTC Timestamp with nanosecond precision, millisecond-precision when serialized to serde (JSON).
 ///
@@ -138,6 +135,26 @@ impl Timestamp {
     }
 }
 
+pub mod formats {
+    use super::*;
+
+    pub type FullMilliseconds = FormatString<t::True, t::False, t::U3>;
+    pub type FullMicroseconds = FormatString<t::True, t::False, t::U6>;
+    pub type FullNanoseconds = FormatString<t::True, t::False, t::U9>;
+
+    pub type FullMillisecondsOffset = FormatString<t::True, t::True, t::U3>;
+
+    pub type ShortMilliseconds = FormatString<t::False, t::False, t::U3>;
+
+    #[test]
+    fn test_short_ms_length() {
+        // ensure the short format could fit within a smolstr/compact_str
+        assert!(
+            <<ShortMilliseconds as crate::ts_str::IsValidFormat>::Length as super::t::Unsigned>::USIZE <= 22
+        );
+    }
+}
+
 impl Timestamp {
     const PRIMITIVE_UNIX_EPOCH: PrimitiveDateTime = time::macros::datetime!(1970 - 01 - 01 00:00);
 
@@ -174,32 +191,66 @@ impl Timestamp {
         millis
     }
 
-    /// Format timestamp to ISO8601 with full punctuation, see [Full](formats::Full) for more information.
-    pub fn format(&self) -> TimestampStr<Full> {
-        format::format_iso8601(self.0, UtcOffset::UTC)
+    pub fn format_raw<F: t::Bit, O: t::Bit, P: t::Unsigned>(
+        &self,
+        offset: UtcOffset,
+    ) -> TimestampStr<FormatString<F, O, P>>
+    where
+        FormatString<F, O, P>: IsValidFormat,
+    {
+        format::do_format(self.0, offset)
     }
 
-    /// Format timestamp to ISO8601 without most punctuation, see [Short](formats::Short) for more information.
-    pub fn format_short(&self) -> TimestampStr<Short> {
-        format::format_iso8601(self.0, UtcOffset::UTC)
+    #[inline(always)]
+    pub fn format_with_precision<P: t::Unsigned>(&self) -> TimestampStr<FormatString<t::True, t::False, P>>
+    where
+        FormatString<t::True, t::False, P>: IsValidFormat,
+    {
+        self.format_raw(UtcOffset::UTC)
+    }
+
+    /// Format timestamp to ISO8601 with full punctuation, to millisecond precision.
+    #[inline(always)]
+    pub fn format(&self) -> TimestampStr<formats::FullMilliseconds> {
+        self.format_with_precision()
+    }
+
+    /// Format timestamp to ISO8601 with extended precision to nanoseconds.
+    #[inline(always)]
+    pub fn format_nanoseconds(&self) -> TimestampStr<formats::FullNanoseconds> {
+        self.format_with_precision()
+    }
+
+    /// Format timestamp to ISO8601 with extended precision to microseconds.
+    #[inline(always)]
+    pub fn format_microseconds(&self) -> TimestampStr<formats::FullMicroseconds> {
+        self.format_with_precision()
+    }
+
+    /// Format timestamp to ISO8601 without most punctuation, to millisecond precision.
+    #[inline(always)]
+    pub fn format_short(&self) -> TimestampStr<formats::ShortMilliseconds> {
+        self.format_raw(UtcOffset::UTC)
     }
 
     /// Format timestamp to ISO8601 with arbitrary UTC offset. Any offset is formatted as `+HH:MM`,
     /// and no timezone conversions are done. It is interpreted literally.
     ///
     /// See [FullOffset](formats::FullOffset) for more information.
-    pub fn format_with_offset(&self, offset: UtcOffset) -> TimestampStr<FullOffset> {
-        format::format_iso8601(self.0, offset)
+    #[inline(always)]
+    pub fn format_with_offset(&self, offset: UtcOffset) -> TimestampStr<formats::FullMillisecondsOffset> {
+        self.format_raw(offset)
     }
 
-    /// Format timestamp to ISO8601 with extended precision to nanoseconds, see [FullNanoseconds](formats::FullNanoseconds) for more information.
-    pub fn format_nanoseconds(&self) -> TimestampStr<FullNanoseconds> {
-        format::format_iso8601(self.0, UtcOffset::UTC)
-    }
-
-    /// Format timestamp to ISO8601 with extended precision to microseconds, see [FullMicroseconds](formats::FullMicroseconds) for more information.
-    pub fn format_microseconds(&self) -> TimestampStr<FullMicroseconds> {
-        format::format_iso8601(self.0, UtcOffset::UTC)
+    #[inline(always)]
+    pub fn format_with_offset_and_precision<P: t::Unsigned>(
+        &self,
+        offset: UtcOffset,
+    ) -> TimestampStr<FormatString<t::True, t::True, P>>
+    where
+        FormatString<t::True, t::True, P>: IsValidFormat,
+    {
+        self.format_raw(offset)
     }
 
     /// Parse to UTC timestamp from any ISO8601 string. Offsets are applied during parsing.
@@ -209,6 +260,7 @@ impl Timestamp {
     }
 
     /// Convert to `time::OffsetDateTime` with the given offset.
+    #[inline(always)]
     pub const fn assume_offset(self, offset: UtcOffset) -> time::OffsetDateTime {
         self.0.assume_offset(offset)
     }
@@ -217,14 +269,14 @@ impl Timestamp {
 impl Deref for Timestamp {
     type Target = PrimitiveDateTime;
 
-    #[inline]
+    #[inline(always)]
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
 impl DerefMut for Timestamp {
-    #[inline]
+    #[inline(always)]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }

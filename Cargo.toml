@@ -1,6 +1,6 @@
 [package]
 name = "iso8601-timestamp"
-version = "0.1.11"
+version = "0.2.0"
 authors = ["novacrazy <novacrazy@gmail.com>"]
 edition = "2018"
 description = "High-performance ISO8601 Timestamp formatting and parsing"
@@ -42,6 +42,11 @@ path = "benches/timestamp.rs"
 harness = false
 
 [profile.release]
+opt-level = 3
+lto = 'fat'
+codegen-units = 1
+
+[profile.bench]
 opt-level = 3
 lto = 'fat'
 codegen-units = 1
