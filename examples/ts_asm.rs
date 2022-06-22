@@ -1,8 +1,8 @@
-use iso8601_timestamp::{formats::Full, Timestamp, TimestampStr};
+use iso8601_timestamp::{formats::*, Timestamp, TimestampStr};
 
 #[inline(never)]
 #[no_mangle]
-pub fn format_iso8601(ts: Timestamp) -> TimestampStr<Full> {
+pub fn format_iso8601(ts: Timestamp) -> TimestampStr<FullMilliseconds> {
     ts.format()
 }
 
