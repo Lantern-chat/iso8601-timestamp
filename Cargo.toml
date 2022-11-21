@@ -1,6 +1,6 @@
 [package]
 name = "iso8601-timestamp"
-version = "0.1.11"
+version = "0.2.2"
 authors = ["novacrazy <novacrazy@gmail.com>"]
 edition = "2018"
 description = "High-performance ISO8601 Timestamp formatting and parsing"
@@ -28,6 +28,7 @@ postgres-types = { optional = true, version = "0.2.2", features = ["with-time-0_
 bytes = { optional = true, version = "1.1.0" }
 generic-array = "0.14.4"
 schemars = { optional = true, version = "0.8.8" }
+rusqlite = { version = "0.28", optional = true }
 
 [dev-dependencies]
 time = { version = "0.3", features = ["macros", "parsing", "formatting"] }
@@ -42,6 +43,11 @@ path = "benches/timestamp.rs"
 harness = false
 
 [profile.release]
+opt-level = 3
+lto = 'fat'
+codegen-units = 1
+
+[profile.bench]
 opt-level = 3
 lto = 'fat'
 codegen-units = 1

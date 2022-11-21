@@ -1,6 +1,6 @@
 use time::{PrimitiveDateTime, UtcOffset};
 
-use crate::ts_str::{TimestampStr, TimestampStrStorage};
+use crate::ts_str::{template, FormatString, IsValidFormat, TimestampStr};
 
 const fn make_table() -> [[u8; 2]; 100] {
     let mut table = [[0; 2]; 100];
@@ -26,10 +26,15 @@ use core::arch::x86_64::{_mm_prefetch, _MM_HINT_T0};
 #[cfg(target_arch = "x86")]
 use core::arch::x86::{_mm_prefetch, _MM_HINT_T0};
 
+use generic_array::typenum as t;
+
 #[rustfmt::skip]
 #[allow(unused_assignments)]
 #[inline(always)]
-pub fn format_iso8601<S: TimestampStrStorage>(ts: PrimitiveDateTime, offset: UtcOffset) -> TimestampStr<S> {
+pub fn do_format<F: t::Bit, O: t::Bit, P: t::Unsigned>(ts: PrimitiveDateTime, offset: UtcOffset) -> TimestampStr<FormatString<F, O, P>>
+where
+    FormatString<F, O, P>: IsValidFormat,
+{
     let lookup = LOOKUP.as_ptr();
 
     // prefetch the table while datetime parts are being destructured
@@ -41,7 +46,8 @@ pub fn format_iso8601<S: TimestampStrStorage>(ts: PrimitiveDateTime, offset: Utc
     let (year, month, day) = ts.to_calendar_date();
     let (hour, minute, second, nanoseconds) = ts.as_hms_nano();
 
-    let mut buf = S::init();
+    let mut buf = template::<F, O, P>();
+
     let mut pos = 0;
 
     macro_rules! write_num {
@@ -52,7 +58,7 @@ pub fn format_iso8601<S: TimestampStrStorage>(ts: PrimitiveDateTime, offset: Utc
             // tell the compiler that the max value is known
             assume!(value <= $max);
 
-            let buf = buf.as_mut_ptr().add(pos);
+            let buf = buf.as_mut().as_mut_ptr().add(pos);
 
             // process 2 digits per iteration, this loop will likely be unrolled
             while len >= 2 {
@@ -72,35 +78,47 @@ pub fn format_iso8601<S: TimestampStrStorage>(ts: PrimitiveDateTime, offset: Utc
 
             pos += $len;
 
-            if S::IS_FULL { pos += 1; }
+            if F::BOOL { pos += 1; }
         }};
     }
 
-    write_num!(year as u16,     4, 9999);   // YYYY-
-    write_num!(month as u8,     2, 12);     // MM-
-    write_num!(day,             2, 31);     // DDT?
-    if !S::IS_FULL { pos += 1; }            // T
-    write_num!(hour,            2, 59);     // HH:
-    write_num!(minute,          2, 59);     // mm:
-    write_num!(second,          2, 59);     // ss.?
-    if !S::IS_FULL { pos += 1; }            // .
+    write_num!(year as u16,     4, 9999);       // YYYY-
+    write_num!(month as u8,     2, 12);         // MM-
+    write_num!(day,             2, 31);         // DDT?
+    if !F::BOOL { pos += 1; }                   // T
+    write_num!(hour,            2, 59);         // HH:
+    write_num!(minute,          2, 59);         // mm:
+    write_num!(second,          2, 59);         // ss.?(if full)
+    // if not full format and has subseconds, accept period.
+    if !F::BOOL && P::USIZE > 0 { pos += 1; }   // .
 
-    match S::PRECISION {
-        3 => write_num!(nanoseconds / 1_000_000, 3, 999), // SSS
-        6 => write_num!(nanoseconds / 1_000, 6, 999_999), // SSSSSS
-        9 => write_num!(nanoseconds, 9, 999_999_999),     // SSSSSSSSS
-        _ => unsafe { core::hint::unreachable_unchecked() }
+    // also accepts +- if Full
+    match P::USIZE {
+        0 => {}
+        1 => write_num!(nanoseconds / 100000000, 1, 9), // S
+        2 => write_num!(nanoseconds / 10000000, 2, 99), // SS
+        3 => write_num!(nanoseconds / 1000000, 3, 999), // SSS
+        4 => write_num!(nanoseconds / 100000, 4, 9999), // SSSS
+        5 => write_num!(nanoseconds / 10000, 5, 99999), // SSSSS
+        6 => write_num!(nanoseconds / 1000, 6, 999999), // SSSSSS
+        7 => write_num!(nanoseconds / 100, 7, 9999999), // SSSSSSS
+        8 => write_num!(nanoseconds / 10, 8, 99999999), // SSSSSSSS
+        9 => write_num!(nanoseconds / 1, 9, 999999999), // SSSSSSSSS
+        _ => unsafe { std::hint::unreachable_unchecked() }
     }
 
-    if S::HAS_OFFSET {
+    if O::BOOL {
+        if !F::BOOL { pos += 1; } // +-
+
         if offset.is_negative() {
             // go back one and overwrite +
-            unsafe { *buf.as_mut_ptr().add(pos - 1) = b'-'; }
+            unsafe { *buf.as_mut().as_mut_ptr().add(pos - 1) = b'-'; }
         }
 
         let (h, m, _) = offset.as_hms();
 
-        write_num!(h.abs(), 2, 23); // HZ:
+        write_num!(h.abs(), 2, 23); // HZ
+        if !F::BOOL { pos += 1; }   // :
         write_num!(m.abs(), 2, 59); // MZ
     }
 
@@ -109,17 +127,61 @@ pub fn format_iso8601<S: TimestampStrStorage>(ts: PrimitiveDateTime, offset: Utc
 
 #[cfg(test)]
 mod tests {
-    use crate::ts_str::FullOffset;
-
     use super::*;
 
     #[test]
-    fn test_offset() {
-        let ts: PrimitiveDateTime = time::macros::datetime!(2014-4-12 4:00 PM);
-        let o = UtcOffset::from_hms(-4, 30, 0).unwrap();
+    fn test_template() {
+        fn as_str<'a>(x: &'a [u8]) -> &'a str {
+            std::str::from_utf8(x).unwrap()
+        }
 
-        let formatted = format_iso8601::<FullOffset>(ts, o);
+        macro_rules! g {
+            ($($f:ty, $o:ty, $p:ty;)*) => {$(
+                println!("{}", as_str(&template::<$f, $o, $p>()));
+            )*}
+        }
 
-        assert_eq!("2014-04-12T16:00:00.000-04:30", &*formatted);
+        g! {
+            t::True, t::True, t::U0;
+            t::True, t::True, t::U1;
+            t::True, t::True, t::U2;
+            t::True, t::True, t::U3;
+            t::True, t::True, t::U4;
+            t::True, t::True, t::U5;
+            t::True, t::True, t::U6;
+            t::True, t::True, t::U7;
+            t::True, t::True, t::U8;
+            t::True, t::True, t::U9;
+            t::True, t::False, t::U0;
+            t::True, t::False, t::U1;
+            t::True, t::False, t::U2;
+            t::True, t::False, t::U3;
+            t::True, t::False, t::U4;
+            t::True, t::False, t::U5;
+            t::True, t::False, t::U6;
+            t::True, t::False, t::U7;
+            t::True, t::False, t::U8;
+            t::True, t::False, t::U9;
+            t::False, t::True, t::U0;
+            t::False, t::True, t::U1;
+            t::False, t::True, t::U2;
+            t::False, t::True, t::U3;
+            t::False, t::True, t::U4;
+            t::False, t::True, t::U5;
+            t::False, t::True, t::U6;
+            t::False, t::True, t::U7;
+            t::False, t::True, t::U8;
+            t::False, t::True, t::U9;
+            t::False, t::False, t::U0;
+            t::False, t::False, t::U1;
+            t::False, t::False, t::U2;
+            t::False, t::False, t::U3;
+            t::False, t::False, t::U4;
+            t::False, t::False, t::U5;
+            t::False, t::False, t::U6;
+            t::False, t::False, t::U7;
+            t::False, t::False, t::U8;
+            t::False, t::False, t::U9;
+        }
     }
 }

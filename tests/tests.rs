@@ -1,4 +1,5 @@
 use iso8601_timestamp::Timestamp;
+use time::UtcOffset;
 
 #[test]
 fn test_format_iso8601() {
@@ -86,4 +87,80 @@ fn test_invalid() {
     let parsed = Timestamp::parse("-868686868");
 
     assert!(parsed.is_none());
+}
+
+#[test]
+fn test_offset() {
+    let ts: time::PrimitiveDateTime = time::macros::datetime!(2014-4-12 4:00 PM);
+    let o = time::UtcOffset::from_hms(-4, 30, 0).unwrap();
+
+    let ts = Timestamp::from(ts);
+
+    let formatted = ts.format_with_offset(o);
+
+    assert_eq!("2014-04-12T16:00:00.000-04:30", &*formatted);
+}
+
+#[rustfmt::skip]
+#[test]
+fn test_all_formats() {
+    use generic_array::typenum as t;
+
+    let ts = Timestamp::from(time::macros::datetime!(2014-4-12 4:00 PM));
+    let mut ts2 = ts;
+
+    macro_rules! test_cfg {
+        ($f:ty, $o:ty, $p:ty, $offset:expr, $expected:expr) => {
+            let res = ts.format_raw::<$f, $o, $p>($offset);
+            assert_eq!(res, $expected);
+            assert_eq!(Timestamp::parse(res.as_ref()), Some(ts2));
+        }
+    }
+
+    test_cfg!(t::True, t::False, t::U0, UtcOffset::UTC, "2014-04-12T16:00:00Z");
+    test_cfg!(t::True, t::False, t::U1, UtcOffset::UTC, "2014-04-12T16:00:00.0Z");
+    test_cfg!(t::True, t::False, t::U2, UtcOffset::UTC, "2014-04-12T16:00:00.00Z");
+    test_cfg!(t::True, t::False, t::U3, UtcOffset::UTC, "2014-04-12T16:00:00.000Z");
+    test_cfg!(t::True, t::False, t::U4, UtcOffset::UTC, "2014-04-12T16:00:00.0000Z");
+    test_cfg!(t::True, t::False, t::U5, UtcOffset::UTC, "2014-04-12T16:00:00.00000Z");
+    test_cfg!(t::True, t::False, t::U6, UtcOffset::UTC, "2014-04-12T16:00:00.000000Z");
+    test_cfg!(t::True, t::False, t::U7, UtcOffset::UTC, "2014-04-12T16:00:00.0000000Z");
+    test_cfg!(t::True, t::False, t::U8, UtcOffset::UTC, "2014-04-12T16:00:00.00000000Z");
+    test_cfg!(t::True, t::False, t::U9, UtcOffset::UTC, "2014-04-12T16:00:00.000000000Z");
+
+    test_cfg!(t::False, t::False, t::U0, UtcOffset::UTC, "20140412T160000Z");
+    test_cfg!(t::False, t::False, t::U1, UtcOffset::UTC, "20140412T160000.0Z");
+    test_cfg!(t::False, t::False, t::U2, UtcOffset::UTC, "20140412T160000.00Z");
+    test_cfg!(t::False, t::False, t::U3, UtcOffset::UTC, "20140412T160000.000Z");
+    test_cfg!(t::False, t::False, t::U4, UtcOffset::UTC, "20140412T160000.0000Z");
+    test_cfg!(t::False, t::False, t::U5, UtcOffset::UTC, "20140412T160000.00000Z");
+    test_cfg!(t::False, t::False, t::U6, UtcOffset::UTC, "20140412T160000.000000Z");
+    test_cfg!(t::False, t::False, t::U7, UtcOffset::UTC, "20140412T160000.0000000Z");
+    test_cfg!(t::False, t::False, t::U8, UtcOffset::UTC, "20140412T160000.00000000Z");
+    test_cfg!(t::False, t::False, t::U9, UtcOffset::UTC, "20140412T160000.000000000Z");
+
+    let offset = UtcOffset::from_hms(15, 30, 0).unwrap();
+    ts2 = Timestamp::from(ts.assume_offset(-offset));
+
+    test_cfg!(t::True, t::True, t::U0, offset, "2014-04-12T16:00:00+15:30");
+    test_cfg!(t::True, t::True, t::U1, offset, "2014-04-12T16:00:00.0+15:30");
+    test_cfg!(t::True, t::True, t::U2, offset, "2014-04-12T16:00:00.00+15:30");
+    test_cfg!(t::True, t::True, t::U3, offset, "2014-04-12T16:00:00.000+15:30");
+    test_cfg!(t::True, t::True, t::U4, offset, "2014-04-12T16:00:00.0000+15:30");
+    test_cfg!(t::True, t::True, t::U5, offset, "2014-04-12T16:00:00.00000+15:30");
+    test_cfg!(t::True, t::True, t::U6, offset, "2014-04-12T16:00:00.000000+15:30");
+    test_cfg!(t::True, t::True, t::U7, offset, "2014-04-12T16:00:00.0000000+15:30");
+    test_cfg!(t::True, t::True, t::U8, offset, "2014-04-12T16:00:00.00000000+15:30");
+    test_cfg!(t::True, t::True, t::U9, offset, "2014-04-12T16:00:00.000000000+15:30");
+
+    test_cfg!(t::False, t::True, t::U0, offset, "20140412T160000+15:30");
+    test_cfg!(t::False, t::True, t::U1, offset, "20140412T160000.0+15:30");
+    test_cfg!(t::False, t::True, t::U2, offset, "20140412T160000.00+15:30");
+    test_cfg!(t::False, t::True, t::U3, offset, "20140412T160000.000+15:30");
+    test_cfg!(t::False, t::True, t::U4, offset, "20140412T160000.0000+15:30");
+    test_cfg!(t::False, t::True, t::U5, offset, "20140412T160000.00000+15:30");
+    test_cfg!(t::False, t::True, t::U6, offset, "20140412T160000.000000+15:30");
+    test_cfg!(t::False, t::True, t::U7, offset, "20140412T160000.0000000+15:30");
+    test_cfg!(t::False, t::True, t::U8, offset, "20140412T160000.00000000+15:30");
+    test_cfg!(t::False, t::True, t::U9, offset, "20140412T160000.000000000+15:30");
 }
