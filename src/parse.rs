@@ -1,7 +1,6 @@
 use core::convert::TryFrom;
-use core::time::Duration;
 
-use time::{Date, Month, PrimitiveDateTime, Time};
+use time::{Date, Duration, Month, PrimitiveDateTime, Time};
 
 /// Trait implemented locally for very fast parsing of small unsigned integers
 trait FastParse: Sized {
@@ -276,13 +275,13 @@ pub fn parse_iso8601(ts: &str) -> Option<PrimitiveDateTime> {
             let offset_minute = parse_offset::<u8>(b, offset, 2)? as u64;
             offset += 2;
 
-            let dur = Duration::from_secs(60 * 60 * offset_hour + offset_minute * 60);
+            let mut offset_seconds = (60 * 60 * offset_hour + offset_minute * 60) as i64;
 
-            if c == b'+' {
-                date_time += dur;
-            } else {
-                date_time -= dur;
+            if c == b'-' {
+                offset_seconds *= -1;
             }
+
+            date_time = date_time.checked_add(Duration::seconds(offset_seconds))?;
         }
 
         // Parse trailing "UTC", but it does nothing, same as Z

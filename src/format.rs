@@ -88,24 +88,28 @@ where
     if !F::BOOL { pos += 1; }                   // T
     write_num!(hour,            2, 59);         // HH:
     write_num!(minute,          2, 59);         // mm:
-    write_num!(second,          2, 59);         // ss.?
+    write_num!(second,          2, 59);         // ss.?(if full)
+    // if not full format and has subseconds, accept period.
     if !F::BOOL && P::USIZE > 0 { pos += 1; }   // .
 
+    // also accepts +- if Full
     match P::USIZE {
         0 => {}
-        1 => write_num!(nanoseconds / 1_000_000_00, 1, 9),  // S
-        2 => write_num!(nanoseconds / 1_000_000_0, 2, 99),  // SS
-        3 => write_num!(nanoseconds / 1_000_000, 3, 999),   // SSS
-        4 => write_num!(nanoseconds / 1_000_00, 4, 999_9),  // SSSS
-        5 => write_num!(nanoseconds / 1_000_0, 5, 999_99),  // SSSSS
-        6 => write_num!(nanoseconds / 1_000, 6, 999_999),   // SSSSSS
-        7 => write_num!(nanoseconds / 100, 7, 999_999_9),  // SSSSSSS
-        8 => write_num!(nanoseconds / 10, 8, 999_999_99),  // SSSSSSSS
-        9 => write_num!(nanoseconds, 9, 999_999_999),       // SSSSSSSSS
+        1 => write_num!(nanoseconds / 100000000, 1, 9), // S
+        2 => write_num!(nanoseconds / 10000000, 2, 99), // SS
+        3 => write_num!(nanoseconds / 1000000, 3, 999), // SSS
+        4 => write_num!(nanoseconds / 100000, 4, 9999), // SSSS
+        5 => write_num!(nanoseconds / 10000, 5, 99999), // SSSSS
+        6 => write_num!(nanoseconds / 1000, 6, 999999), // SSSSSS
+        7 => write_num!(nanoseconds / 100, 7, 9999999), // SSSSSSS
+        8 => write_num!(nanoseconds / 10, 8, 99999999), // SSSSSSSS
+        9 => write_num!(nanoseconds / 1, 9, 999999999), // SSSSSSSSS
         _ => unsafe { std::hint::unreachable_unchecked() }
     }
 
     if O::BOOL {
+        if !F::BOOL { pos += 1; } // +-
+
         if offset.is_negative() {
             // go back one and overwrite +
             unsafe { *buf.as_mut().as_mut_ptr().add(pos - 1) = b'-'; }
@@ -113,7 +117,8 @@ where
 
         let (h, m, _) = offset.as_hms();
 
-        write_num!(h.abs(), 2, 23); // HZ:
+        write_num!(h.abs(), 2, 23); // HZ
+        if !F::BOOL { pos += 1; }   // :
         write_num!(m.abs(), 2, 59); // MZ
     }
 

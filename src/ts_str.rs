@@ -150,10 +150,24 @@ impl<S: IsValidFormat> PartialEq<str> for TimestampStr<S> {
     }
 }
 
+impl<S: IsValidFormat> PartialEq<&str> for TimestampStr<S> {
+    #[inline]
+    fn eq(&self, other: &&str) -> bool {
+        self.as_ref() == *other
+    }
+}
+
 impl<S: IsValidFormat> PartialEq<TimestampStr<S>> for str {
     #[inline]
     fn eq(&self, other: &TimestampStr<S>) -> bool {
         self == other.as_ref()
+    }
+}
+
+impl<S: IsValidFormat> PartialEq<TimestampStr<S>> for &str {
+    #[inline]
+    fn eq(&self, other: &TimestampStr<S>) -> bool {
+        *self == other.as_ref()
     }
 }
 
