@@ -457,6 +457,46 @@ mod pg_impl {
     }
 }
 
+#[cfg(feature = "rusqlite")]
+mod rusqlite_impl {
+    use super::Timestamp;
+
+    use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ToSql, ToSqlOutput, Value, ValueRef};
+    use rusqlite::Error;
+
+    #[derive(Debug)]
+    struct InvalidTimestamp;
+
+    impl std::error::Error for InvalidTimestamp {}
+    impl std::fmt::Display for InvalidTimestamp {
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            f.write_str("Invalid ISO8601 Timestamp")
+        }
+    }
+
+    impl FromSql for Timestamp {
+        fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+            match value {
+                ValueRef::Text(bytes) => match core::str::from_utf8(bytes) {
+                    Err(e) => Err(FromSqlError::Other(Error::Utf8Error(e).into())),
+                    Ok(ts) => match Timestamp::parse(ts) {
+                        Some(ts) => Ok(ts),
+                        None => Err(FromSqlError::Other(InvalidTimestamp.into())),
+                    },
+                },
+                ValueRef::Integer(ts) => Ok(Timestamp::from_unix_timestamp(ts)),
+                _ => Err(FromSqlError::InvalidType),
+            }
+        }
+    }
+
+    impl ToSql for Timestamp {
+        fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
+            Ok(ToSqlOutput::Owned(Value::Text(self.format().to_owned())))
+        }
+    }
+}
+
 #[cfg(feature = "schema")]
 mod schema_impl {
     use schemars::_serde_json::json;
