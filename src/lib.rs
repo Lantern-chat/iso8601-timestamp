@@ -54,6 +54,9 @@
 //! * `pg`
 //!     - Enables `ToSql`/`FromSql` implementations for `Timestamp` so it can be directly stored/fetched from a PostgreSQL database using `rust-postgres`
 //!
+//! * `rusqlite`
+//!     - Enables `ToSql`/`FromSql` implementations for `Timestamp` so it can be stored/fetched from an `rusqlite`/`sqlite3` database
+//!
 //! * `schema`
 //!     - Enables implementation for `JsonSchema` for generating a JSON schema on the fly using `schemars`.
 //!

@@ -28,7 +28,7 @@ postgres-types = { optional = true, version = "0.2.2", features = ["with-time-0_
 bytes = { optional = true, version = "1.1.0" }
 generic-array = "0.14.4"
 schemars = { optional = true, version = "0.8.8" }
-rusqlite = { version = "0.28", optional = true }
+rusqlite = { optional = true, version = "0.28" }
 
 [dev-dependencies]
 time = { version = "0.3", features = ["macros", "parsing", "formatting"] }
@@ -53,4 +53,4 @@ lto = 'fat'
 codegen-units = 1
 
 [package.metadata.docs.rs]
-features = ["serde", "pg", "schema"]
+features = ["serde", "pg", "schema", "rusqlite"]
