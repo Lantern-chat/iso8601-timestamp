@@ -8,7 +8,7 @@ edition = "2018"
 cargo-fuzz = true
 
 [dependencies]
-libfuzzer-sys = "0.4"
+afl = "*"
 
 [dependencies.timestamp]
 package = "iso8601-timestamp"
