@@ -179,8 +179,8 @@ pub fn parse_iso8601(ts: &str) -> Option<PrimitiveDateTime> {
 
     //println!("{}-{}-{}", year, month, day);
 
-    // if no T, then return
-    if b.get(offset).map(|c| *c | 32) != Some(b't') {
+    // if no T (or space), then return
+    if !matches!(b.get(offset).map(|c| *c | 32), Some(b't' | b' ')) {
         return None;
     }
 
@@ -240,8 +240,6 @@ pub fn parse_iso8601(ts: &str) -> Option<PrimitiveDateTime> {
         _ => maybe_time = Time::from_hms(hour, minute, 0),
     }
 
-    //println!("SECOND: {}", second);
-
     let mut date_time = PrimitiveDateTime::new(
         ymd,
         match maybe_time {
@@ -277,7 +275,7 @@ pub fn parse_iso8601(ts: &str) -> Option<PrimitiveDateTime> {
 
             let mut offset_seconds = (60 * 60 * offset_hour + offset_minute * 60) as i64;
 
-            if c == b'-' {
+            if c != b'+' {
                 offset_seconds *= -1;
             }
 
