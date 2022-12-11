@@ -67,7 +67,6 @@
 #![cfg_attr(feature = "nightly", feature(core_intrinsics))]
 
 use core::ops::{Deref, DerefMut};
-use core::time::Duration;
 
 #[cfg(feature = "std")]
 use std::time::SystemTime;
@@ -165,21 +164,14 @@ impl Timestamp {
     pub const UNIX_EPOCH: Self = Timestamp(Self::PRIMITIVE_UNIX_EPOCH);
 
     pub fn from_unix_timestamp(seconds: i64) -> Self {
-        if seconds < 0 {
-            Self::UNIX_EPOCH - Duration::from_secs(-seconds as u64)
-        } else {
-            Self::UNIX_EPOCH + Duration::from_secs(seconds as u64)
-        }
+        Self::UNIX_EPOCH + time::Duration::seconds(seconds)
     }
 
     pub fn from_unix_timestamp_ms(milliseconds: i64) -> Self {
-        if milliseconds < 0 {
-            Self::UNIX_EPOCH - Duration::from_millis(-milliseconds as u64)
-        } else {
-            Self::UNIX_EPOCH + Duration::from_millis(milliseconds as u64)
-        }
+        Self::UNIX_EPOCH + time::Duration::milliseconds(milliseconds)
     }
 
+    #[deprecated = "Use `self.duration_since(Timestamp::UNIX_EPOCH).whole_milliseconds() as i64`"]
     pub fn to_unix_timestamp_ms(self) -> i64 {
         const UNIX_EPOCH_JULIAN_DAY: i64 = time::macros::date!(1970 - 01 - 01).to_julian_day() as i64;
 
@@ -192,6 +184,12 @@ impl Timestamp {
         let millis = seconds * 1000 + ms as i64;
 
         millis
+    }
+
+    /// Returns the amount of time elapsed from an earlier point in time.
+    #[inline]
+    pub fn duration_since(self, earlier: Self) -> time::Duration {
+        self.0 - earlier.0
     }
 
     pub fn format_raw<F: t::Bit, O: t::Bit, P: t::Unsigned>(
@@ -238,8 +236,6 @@ impl Timestamp {
 
     /// Format timestamp to ISO8601 with arbitrary UTC offset. Any offset is formatted as `+HH:MM`,
     /// and no timezone conversions are done. It is interpreted literally.
-    ///
-    /// See [FullOffset](formats::FullOffset) for more information.
     #[inline(always)]
     pub fn format_with_offset(&self, offset: UtcOffset) -> TimestampStr<formats::FullMillisecondsOffset> {
         self.format_raw(offset)
@@ -329,7 +325,7 @@ mod serde_impl {
             if serializer.is_human_readable() {
                 self.format().serialize(serializer)
             } else {
-                self.to_unix_timestamp_ms().serialize(serializer)
+                (self.duration_since(Timestamp::UNIX_EPOCH).whole_milliseconds() as i64).serialize(serializer)
             }
         }
     }
