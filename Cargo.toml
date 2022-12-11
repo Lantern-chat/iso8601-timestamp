@@ -1,6 +1,6 @@
 [package]
 name = "iso8601-timestamp"
-version = "0.2.3"
+version = "0.2.4"
 authors = ["novacrazy <novacrazy@gmail.com>"]
 edition = "2018"
 description = "High-performance ISO8601 Timestamp formatting and parsing"
