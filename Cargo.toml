@@ -34,6 +34,7 @@ rusqlite = { optional = true, version = "0.28" }
 time = { version = "0.3", features = ["macros", "parsing", "formatting"] }
 criterion = "0.3"
 chrono = "0.4"
+iso8601 = "0.5.1"
 ciborium = "0.2"
 serde = { version = "1", features = ["derive"] }
 

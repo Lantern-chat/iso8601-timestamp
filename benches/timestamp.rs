@@ -64,6 +64,12 @@ fn criterion_benchmark(c: &mut Criterion) {
         b.iter(|| OffsetDateTime::parse(ts, &Rfc3339).unwrap());
     });
 
+    c.bench_function("parse_iso8601_other", |b| {
+        let ts = black_box("2021-10-17T02:03:01+00:00");
+
+        b.iter(|| iso8601::datetime(ts).unwrap());
+    });
+
     c.bench_function("to_unix_timestamp_ms", |b| {
         let ts = black_box(Timestamp::now_utc());
 
