@@ -201,7 +201,7 @@ pub fn parse_iso8601(ts: &str) -> Option<PrimitiveDateTime> {
         Some(b'T' | b't' | b' ' | b'_') => {
             offset += 1; // T
         }
-        // date-only
+        // date-only, None means it's at the end of the string
         None => return Some(PrimitiveDateTime::new(ymd, Time::MIDNIGHT)),
         _ => return None,
     }
