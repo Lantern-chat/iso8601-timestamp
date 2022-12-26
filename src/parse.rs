@@ -206,7 +206,7 @@ pub fn parse_iso8601(ts: &str) -> Option<PrimitiveDateTime> {
             let second = parse_offset::<u8>(b, offset, 2)?;
             offset += 2;
 
-            if matches!(b.get(offset), Some(b'.' | b',')) {
+            if let Some(b'.' | b',') = b.get(offset) {
                 offset += 1;
 
                 let mut factor: u32 = 100_000_000; // up to 9 decimal places
