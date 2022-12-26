@@ -1,5 +1,3 @@
-use core::convert::TryFrom;
-
 use time::{Date, Duration, Month, PrimitiveDateTime, Time};
 
 /// Trait implemented locally for very fast parsing of small unsigned integers
@@ -175,16 +173,38 @@ pub fn parse_iso8601(ts: &str) -> Option<PrimitiveDateTime> {
 
     //println!("DAY: {}", day);
 
-    let ymd = Date::from_calendar_date(year as i32, Month::try_from(month).ok()?, day).ok()?;
+    let ymd = Date::from_calendar_date(
+        year as i32,
+        // NOTE: Inlining this is cheaper than `Month::try_from(month).ok()?`
+        match month {
+            1 => Month::January,
+            2 => Month::February,
+            3 => Month::March,
+            4 => Month::April,
+            5 => Month::May,
+            6 => Month::June,
+            7 => Month::July,
+            8 => Month::August,
+            9 => Month::September,
+            10 => Month::October,
+            11 => Month::November,
+            12 => Month::December,
+            _ => return None,
+        },
+        day,
+    )
+    .ok()?;
 
     //println!("{}-{}-{}", year, month, day);
 
-    // if no T (or space), then return
-    if !matches!(b.get(offset).map(|c| *c | 32), Some(b't' | b' ')) {
-        return None;
+    match b.get(offset) {
+        Some(b'T' | b't' | b' ' | b'_') => {
+            offset += 1; // T
+        }
+        // date-only
+        None => return Some(PrimitiveDateTime::new(ymd, Time::MIDNIGHT)),
+        _ => return None,
     }
-
-    offset += 1; // T
 
     let hour = parse_offset::<u8>(b, offset, 2)?;
     offset += 2;
@@ -201,7 +221,11 @@ pub fn parse_iso8601(ts: &str) -> Option<PrimitiveDateTime> {
     let maybe_time;
 
     // if the next character is a digit, parse seconds and milliseconds, otherwise move on
-    match b.get(offset) {
+    //
+    // Note: if last byte was not `:`, then it'll be here, so skipping the seconds field is
+    // allowed by going on to timezones, or if using the short-form, current character will be an integer
+    // treated as seconds. Works out either way.
+    maybe_time = match b.get(offset) {
         Some(b'0'..=b'9') => {
             let second = parse_offset::<u8>(b, offset, 2)?;
             offset += 2;
@@ -227,18 +251,18 @@ pub fn parse_iso8601(ts: &str) -> Option<PrimitiveDateTime> {
                 // if leap seconds, ignore the parsed value and set it to just before 60
                 // doing it this way avoids duplicate code to consume the extra characters
                 if unlikely!(second == 60) {
-                    maybe_time = Time::from_hms_nano(hour, minute, 59, 999_999_999);
+                    Time::from_hms_nano(hour, minute, 59, 999_999_999)
                 } else {
-                    maybe_time = Time::from_hms_nano(hour, minute, second, nanosecond);
+                    Time::from_hms_nano(hour, minute, second, nanosecond)
                 }
             } else if unlikely!(second == 60) {
-                maybe_time = Time::from_hms_nano(hour, minute, 59, 999_999_999);
+                Time::from_hms_nano(hour, minute, 59, 999_999_999)
             } else {
-                maybe_time = Time::from_hms(hour, minute, second)
+                Time::from_hms(hour, minute, second)
             }
         }
-        _ => maybe_time = Time::from_hms(hour, minute, 0),
-    }
+        _ => Time::from_hms(hour, minute, 0),
+    };
 
     let mut date_time = PrimitiveDateTime::new(
         ymd,
