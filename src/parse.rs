@@ -206,7 +206,7 @@ pub fn parse_iso8601(ts: &str) -> Option<PrimitiveDateTime> {
             let second = parse_offset::<u8>(b, offset, 2)?;
             offset += 2;
 
-            if b.get(offset).copied() == Some(b'.') {
+            if matches!(b.get(offset), Some(b'.' | b',')) {
                 offset += 1;
 
                 let mut factor: u32 = 100_000_000; // up to 9 decimal places
@@ -254,7 +254,7 @@ pub fn parse_iso8601(ts: &str) -> Option<PrimitiveDateTime> {
 
     match tz.copied() {
         // Z
-        Some(b'z' | b'Z') => {}
+        Some(b'Z' | b'z') => {}
 
         // timezone, like +00:00
         Some(c @ b'+' | c @ b'-' | c @ 0xe2) => {
