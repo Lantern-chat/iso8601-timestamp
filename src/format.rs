@@ -104,7 +104,7 @@ where
         7 => write_num!(nanoseconds / 100, 7, 9999999), // SSSSSSS
         8 => write_num!(nanoseconds / 10, 8, 99999999), // SSSSSSSS
         9 => write_num!(nanoseconds / 1, 9, 999999999), // SSSSSSSSS
-        _ => unsafe { std::hint::unreachable_unchecked() }
+        _ => unsafe { core::hint::unreachable_unchecked() }
     }
 
     if O::BOOL {

@@ -16,6 +16,7 @@ repository = "https://github.com/Lantern-chat/iso8601-timestamp"
 std = []
 bson = []
 pg = ["postgres-types", "bytes", "std"]
+rusqlite = ["dep:rusqlite", "std"]
 schema = ["schemars"]
 nightly = []
 verify = [] # Verify numeric input during parsing

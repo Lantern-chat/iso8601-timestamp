@@ -1,6 +1,6 @@
 use core::marker::PhantomData;
+use core::ops::{Add, Mul};
 use generic_array::{typenum as t, ArrayLength, GenericArray};
-use std::ops::{Add, Mul};
 
 mod sealed {
     pub trait Sealed {}
@@ -99,7 +99,7 @@ where
         (false, false, 7) => w!(b"00000000T000000.0000000Z"),
         (false, false, 8) => w!(b"00000000T000000.00000000Z"),
         (false, false, 9) => w!(b"00000000T000000.000000000Z"),
-        _ => unsafe { std::hint::unreachable_unchecked() },
+        _ => unsafe { core::hint::unreachable_unchecked() },
     }
 
     value
