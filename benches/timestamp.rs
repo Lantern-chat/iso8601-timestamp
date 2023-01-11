@@ -6,49 +6,54 @@ use iso8601_timestamp::Timestamp;
 fn criterion_benchmark(c: &mut Criterion) {
     let offset = time::UtcOffset::from_hms(-4, 30, 0).unwrap();
 
-    c.bench_function("format_iso8601", |b| {
+    let mut format_group = c.benchmark_group("format");
+    format_group.bench_function("iso8601", |b| {
         let ts = black_box(Timestamp::now_utc());
 
         b.iter(|| ts.format());
     });
 
-    c.bench_function("format_iso8601_short", |b| {
+    format_group.bench_function("iso8601_short", |b| {
         let ts = black_box(Timestamp::now_utc());
 
         b.iter(|| ts.format_short());
     });
 
-    c.bench_function("format_iso8601_offset", |b| {
+    format_group.bench_function("iso8601_offset", |b| {
         let ts = black_box(Timestamp::now_utc());
 
         b.iter(|| ts.format_with_offset(offset));
     });
 
-    c.bench_function("format_iso8601_nanoseconds", |b| {
+    format_group.bench_function("iso8601_nanoseconds", |b| {
         let ts = black_box(Timestamp::now_utc());
 
         b.iter(|| ts.format_nanoseconds());
     });
 
-    c.bench_function("format_is8601_slow", |b| {
+    format_group.bench_function("is8601_slow", |b| {
         let ts = black_box(Utc::now().naive_utc());
 
         b.iter(|| format_naivedatetime(ts));
     });
 
-    c.bench_function("format_time", |b| {
+    format_group.bench_function("time", |b| {
         let ts = black_box(time::OffsetDateTime::now_utc());
 
         b.iter(|| ts.format(&time::format_description::well_known::Rfc3339).unwrap());
     });
 
-    c.bench_function("parse_iso8601_custom", |b| {
+    format_group.finish();
+
+    let mut parse_group = c.benchmark_group("parse");
+
+    parse_group.bench_function("iso8601_custom", |b| {
         let ts = black_box(Timestamp::now_utc().format());
 
         b.iter(|| Timestamp::parse(&ts));
     });
 
-    c.bench_function("parse_iso8601_chrono", |b| {
+    parse_group.bench_function("iso8601_chrono", |b| {
         let ts = black_box("2021-10-17T02:03:01+00:00");
 
         type T = DateTime<chrono::FixedOffset>;
@@ -56,7 +61,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         b.iter(|| T::parse_from_rfc3339(&ts).unwrap());
     });
 
-    c.bench_function("parse_iso8601_time", |b| {
+    parse_group.bench_function("iso8601_time", |b| {
         let ts = black_box("2021-10-17T02:03:01+00:00");
 
         use time::{format_description::well_known::Rfc3339, OffsetDateTime};
@@ -64,17 +69,13 @@ fn criterion_benchmark(c: &mut Criterion) {
         b.iter(|| OffsetDateTime::parse(ts, &Rfc3339).unwrap());
     });
 
-    c.bench_function("parse_iso8601_other", |b| {
+    parse_group.bench_function("iso8601_other", |b| {
         let ts = black_box("2021-10-17T02:03:01+00:00");
 
         b.iter(|| iso8601::datetime(ts).unwrap());
     });
 
-    c.bench_function("to_unix_timestamp_ms", |b| {
-        let ts = black_box(Timestamp::now_utc());
-
-        b.iter(|| ts.to_unix_timestamp_ms());
-    });
+    parse_group.finish();
 }
 
 criterion_group!(benches, criterion_benchmark);

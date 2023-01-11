@@ -33,7 +33,7 @@ rusqlite = { optional = true, version = "0.28" }
 
 [dev-dependencies]
 time = { version = "0.3", features = ["macros", "parsing", "formatting"] }
-criterion = "0.3"
+criterion = { version = "0.4", features = ["html_reports"] }
 chrono = "0.4"
 iso8601 = "0.5.1"
 ciborium = "0.2"
