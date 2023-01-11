@@ -2,6 +2,7 @@ use time::{PrimitiveDateTime, UtcOffset};
 
 use crate::ts_str::{template, FormatString, IsValidFormat, TimestampStr};
 
+static LOOKUP: [[u8; 2]; 100] = make_table();
 const fn make_table() -> [[u8; 2]; 100] {
     let mut table = [[0; 2]; 100];
 
@@ -18,7 +19,37 @@ const fn make_table() -> [[u8; 2]; 100] {
     table
 }
 
-const LOOKUP: [[u8; 2]; 100] = make_table();
+/*
+static MONTHS: [(u8, u8); 367] = make_months();
+const fn make_months() -> [(u8, u8); 367] {
+    let mut table = [(0, 0); 367];
+
+    let mut o = 0;
+    while o <= 367 {
+        if let Ok(date) = time::Date::from_ordinal_date(2004, o) {
+            let (_, m, d) = date.to_calendar_date();
+            table[o as usize] = (m as u8, d);
+        }
+
+        o += 1;
+    }
+
+    table
+}
+
+#[inline(always)]
+fn get_ymd(date: time::Date) -> (i32, u8, u8) {
+    let (year, mut ordinal) = date.to_ordinal_date();
+
+    if !time::util::is_leap_year(year) && ordinal > 59 {
+        ordinal += 1;
+    }
+
+    let (m, d) = unsafe { *MONTHS.get_unchecked(ordinal as usize) };
+
+    (year, m, d)
+}
+*/
 
 #[cfg(target_arch = "x86_64")]
 use core::arch::x86_64::{_mm_prefetch, _MM_HINT_T0};
@@ -37,7 +68,9 @@ where
 {
     let lookup = LOOKUP.as_ptr();
 
-    // prefetch the table while datetime parts are being destructured
+    // Prefetch the table while datetime parts are being destructured.
+    // Might cause slightly worse microbenchmark performance,
+    // but may save a couple nanoseconds in real applications.
     #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
     unsafe { _mm_prefetch::<_MM_HINT_T0>(lookup as _) }
 
@@ -54,31 +87,30 @@ where
         ($s: expr, $len: expr, $max: expr) => {unsafe {
             let mut value = $s;
             let mut len = $len;
+            let mut d1 = 0;
 
             // tell the compiler that the max value is known
             assume!(value <= $max);
 
+            // get pointer stuff out of the way, freeing dependency chain for next field
             let buf = buf.as_mut().as_mut_ptr().add(pos);
+            pos += $len;
+            if F::BOOL { pos += 1; }
 
             // process 2 digits per iteration, this loop will likely be unrolled
             while len >= 2 {
-                // skip modulus if on last 2 digits, made non-branching when unrolled
-                let d1 = if len > 2 { value % 100 } else { value };
+                // combine these so the compiler can optimize both operations
+                (value, d1) = (value / 100, value % 100);
 
-                len -= 2;
-                buf.add(len).copy_from_nonoverlapping(lookup.add(d1 as usize) as *const u8, 2);
-
-                value /= 100;
+                let e = *lookup.add(d1 as usize);
+                len -= 1; *buf.add(len) = e[1];
+                len -= 1; *buf.add(len) = e[0];
             }
 
             // handle remainder
             if len == 1 {
                 *buf = (value as u8) + b'0';
             }
-
-            pos += $len;
-
-            if F::BOOL { pos += 1; }
         }};
     }
 
@@ -129,15 +161,40 @@ where
 mod tests {
     use super::*;
 
+    /*
+    #[test]
+    fn test_get_ymd() {
+        let mut o = 0;
+        while o <= 367 {
+            if let Ok(date) = time::Date::from_ordinal_date(2004, o) {
+                let (y, m, d) = date.to_calendar_date();
+                assert_eq!((y, m as u8, d), get_ymd(date));
+            }
+
+            if let Ok(date) = time::Date::from_ordinal_date(2005, o) {
+                let (y, m, d) = date.to_calendar_date();
+                assert_eq!((y, m as u8, d), get_ymd(date));
+            }
+
+            o += 1;
+        }
+    }
+    */
+
     #[test]
     fn test_template() {
+        let now = crate::Timestamp::now_utc();
+
         fn as_str<'a>(x: &'a [u8]) -> &'a str {
             std::str::from_utf8(x).unwrap()
         }
 
         macro_rules! g {
             ($($f:ty, $o:ty, $p:ty;)*) => {$(
-                println!("{}", as_str(&template::<$f, $o, $p>()));
+                println!("{} -> {}",
+                    as_str(&template::<$f, $o, $p>()),
+                    now.format_raw::<$f, $o, $p>(time::UtcOffset::from_hms(-6, 0, 0).unwrap())
+                );
             )*}
         }
 

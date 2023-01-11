@@ -107,6 +107,7 @@ where
 
 /// Fixed-size inline string storage that exactly fits the formatted timestamp
 #[derive(Clone, Copy)]
+#[repr(transparent)]
 pub struct TimestampStr<S: IsValidFormat>(pub(crate) S::Storage);
 
 impl<S: IsValidFormat> AsRef<str> for TimestampStr<S> {
