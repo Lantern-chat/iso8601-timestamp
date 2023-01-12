@@ -2,8 +2,7 @@ use time::{PrimitiveDateTime, UtcOffset};
 
 use crate::ts_str::{template, FormatString, IsValidFormat, TimestampStr};
 
-static LOOKUP: [[u8; 2]; 100] = make_table();
-const fn make_table() -> [[u8; 2]; 100] {
+static LOOKUP: [[u8; 2]; 100] = {
     let mut table = [[0; 2]; 100];
 
     let mut i: u8 = 0;
@@ -17,11 +16,10 @@ const fn make_table() -> [[u8; 2]; 100] {
     }
 
     table
-}
+};
 
 /*
-static MONTHS: [(u8, u8); 367] = make_months();
-const fn make_months() -> [(u8, u8); 367] {
+static MONTHS: [(u8, u8); 367] = {
     let mut table = [(0, 0); 367];
 
     let mut o = 0;
@@ -35,7 +33,7 @@ const fn make_months() -> [(u8, u8); 367] {
     }
 
     table
-}
+};
 
 #[inline(always)]
 fn get_ymd(date: time::Date) -> (i32, u8, u8) {
