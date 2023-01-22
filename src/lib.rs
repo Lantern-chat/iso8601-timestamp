@@ -89,11 +89,20 @@ pub use ts_str::{FormatString, TimestampStr};
 /// UTC Timestamp with nanosecond precision, millisecond-precision when serialized to serde (JSON).
 ///
 /// A `Deref`/`DerefMut` implementation is provided to gain access to the inner `PrimitiveDateTime` object.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(transparent)]
 pub struct Timestamp(PrimitiveDateTime);
 
 use core::fmt;
+
+impl fmt::Debug for Timestamp {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("Timestamp")
+            .field(&self.format_nanoseconds())
+            .finish()
+    }
+}
 
 impl fmt::Display for Timestamp {
     #[inline]
@@ -255,7 +264,7 @@ impl Timestamp {
     /// Parse to UTC timestamp from any ISO8601 string. Offsets are applied during parsing.
     #[inline]
     pub fn parse(ts: &str) -> Option<Self> {
-        parse::parse_iso8601(ts).map(Timestamp)
+        parse::parse_iso8601(ts.as_bytes()).map(Timestamp)
     }
 
     /// Convert to `time::OffsetDateTime` with the given offset.

@@ -9,13 +9,16 @@ mod sealed {
 // convert boolean/bit to integer
 type I<BOOL> = t::UInt<t::UTerm, BOOL>;
 
+// 4 bytes for full-formatting (--::)
 type F4<F> = t::Prod<I<F>, t::U4>;
+// 5 bytes for offset (00:00)
 type O5<O> = t::Prod<I<O>, t::U5>;
-type P16<P> = t::Sum<P, t::U16>;
-type P17<P> = t::Sum<P16<P>, I<t::Gr<P, t::U0>>>; // accounts for . that's only present when P>0
+// '+' + 4Y + 2M + 2D + T + 2H + 2m + 2s + Z
+type P17<P> = t::Sum<P, t::U17>;
+type P18<P> = t::Sum<P17<P>, I<t::Gr<P, t::U0>>>; // accounts for . that's only present when P>0
 type F4O5<F, O> = t::Sum<F4<F>, O5<O>>;
 
-type StrLen<F, O, P> = t::Sum<P17<P>, F4O5<F, O>>;
+type StrLen<F, O, P> = t::Sum<P18<P>, F4O5<F, O>>;
 
 #[doc(hidden)]
 pub struct FormatString<F, O, P>(PhantomData<(F, O, P)>);
@@ -34,11 +37,12 @@ where
     I<F>: Mul<t::U4>,
     O: t::Bit,
     I<O>: Mul<t::U5>,
-    P: t::Unsigned + Add<t::U16> + t::IsLessOrEqual<t::U9, Output = t::True> + t::IsGreater<t::U0>,
+    P: t::Unsigned + Add<t::U17> + t::IsLessOrEqual<t::U9, Output = t::True> + t::IsGreater<t::U0>,
     F4<F>: Add<O5<O>>,
-    P16<P>: Add<I<t::Gr<P, t::U0>>>,
-    P17<P>: Add<F4O5<F, O>>,
+    P17<P>: Add<I<t::Gr<P, t::U0>>>,
+    P18<P>: Add<F4O5<F, O>>,
     StrLen<F, O, P>: ArrayLength<u8>,
+
     <StrLen<F, O, P> as ArrayLength<u8>>::ArrayType: Copy,
 {
     type Length = StrLen<F, O, P>;
@@ -59,46 +63,46 @@ where
     }
 
     match (F::BOOL, O::BOOL, P::USIZE) {
-        (true,  true,  0) => w!(b"0000-00-00T00:00:00+00:00"),
-        (true,  true,  1) => w!(b"0000-00-00T00:00:00.0+00:00"),
-        (true,  true,  2) => w!(b"0000-00-00T00:00:00.00+00:00"),
-        (true,  true,  3) => w!(b"0000-00-00T00:00:00.000+00:00"),
-        (true,  true,  4) => w!(b"0000-00-00T00:00:00.0000+00:00"),
-        (true,  true,  5) => w!(b"0000-00-00T00:00:00.00000+00:00"),
-        (true,  true,  6) => w!(b"0000-00-00T00:00:00.000000+00:00"),
-        (true,  true,  7) => w!(b"0000-00-00T00:00:00.0000000+00:00"),
-        (true,  true,  8) => w!(b"0000-00-00T00:00:00.00000000+00:00"),
-        (true,  true,  9) => w!(b"0000-00-00T00:00:00.000000000+00:00"),
-        (true,  false, 0) => w!(b"0000-00-00T00:00:00Z"),
-        (true,  false, 1) => w!(b"0000-00-00T00:00:00.0Z"),
-        (true,  false, 2) => w!(b"0000-00-00T00:00:00.00Z"),
-        (true,  false, 3) => w!(b"0000-00-00T00:00:00.000Z"),
-        (true,  false, 4) => w!(b"0000-00-00T00:00:00.0000Z"),
-        (true,  false, 5) => w!(b"0000-00-00T00:00:00.00000Z"),
-        (true,  false, 6) => w!(b"0000-00-00T00:00:00.000000Z"),
-        (true,  false, 7) => w!(b"0000-00-00T00:00:00.0000000Z"),
-        (true,  false, 8) => w!(b"0000-00-00T00:00:00.00000000Z"),
-        (true,  false, 9) => w!(b"0000-00-00T00:00:00.000000000Z"),
-        (false, true,  0) => w!(b"00000000T000000+00:00"),
-        (false, true,  1) => w!(b"00000000T000000.0+00:00"),
-        (false, true,  2) => w!(b"00000000T000000.00+00:00"),
-        (false, true,  3) => w!(b"00000000T000000.000+00:00"),
-        (false, true,  4) => w!(b"00000000T000000.0000+00:00"),
-        (false, true,  5) => w!(b"00000000T000000.00000+00:00"),
-        (false, true,  6) => w!(b"00000000T000000.000000+00:00"),
-        (false, true,  7) => w!(b"00000000T000000.0000000+00:00"),
-        (false, true,  8) => w!(b"00000000T000000.00000000+00:00"),
-        (false, true,  9) => w!(b"00000000T000000.000000000+00:00"),
-        (false, false, 0) => w!(b"00000000T000000Z"),
-        (false, false, 1) => w!(b"00000000T000000.0Z"),
-        (false, false, 2) => w!(b"00000000T000000.00Z"),
-        (false, false, 3) => w!(b"00000000T000000.000Z"),
-        (false, false, 4) => w!(b"00000000T000000.0000Z"),
-        (false, false, 5) => w!(b"00000000T000000.00000Z"),
-        (false, false, 6) => w!(b"00000000T000000.000000Z"),
-        (false, false, 7) => w!(b"00000000T000000.0000000Z"),
-        (false, false, 8) => w!(b"00000000T000000.00000000Z"),
-        (false, false, 9) => w!(b"00000000T000000.000000000Z"),
+        (true,  true,  0) => w!(b"+0000-00-00T00:00:00+00:00"),
+        (true,  true,  1) => w!(b"+0000-00-00T00:00:00.0+00:00"),
+        (true,  true,  2) => w!(b"+0000-00-00T00:00:00.00+00:00"),
+        (true,  true,  3) => w!(b"+0000-00-00T00:00:00.000+00:00"),
+        (true,  true,  4) => w!(b"+0000-00-00T00:00:00.0000+00:00"),
+        (true,  true,  5) => w!(b"+0000-00-00T00:00:00.00000+00:00"),
+        (true,  true,  6) => w!(b"+0000-00-00T00:00:00.000000+00:00"),
+        (true,  true,  7) => w!(b"+0000-00-00T00:00:00.0000000+00:00"),
+        (true,  true,  8) => w!(b"+0000-00-00T00:00:00.00000000+00:00"),
+        (true,  true,  9) => w!(b"+0000-00-00T00:00:00.000000000+00:00"),
+        (true,  false, 0) => w!(b"+0000-00-00T00:00:00Z"),
+        (true,  false, 1) => w!(b"+0000-00-00T00:00:00.0Z"),
+        (true,  false, 2) => w!(b"+0000-00-00T00:00:00.00Z"),
+        (true,  false, 3) => w!(b"+0000-00-00T00:00:00.000Z"),
+        (true,  false, 4) => w!(b"+0000-00-00T00:00:00.0000Z"),
+        (true,  false, 5) => w!(b"+0000-00-00T00:00:00.00000Z"),
+        (true,  false, 6) => w!(b"+0000-00-00T00:00:00.000000Z"),
+        (true,  false, 7) => w!(b"+0000-00-00T00:00:00.0000000Z"),
+        (true,  false, 8) => w!(b"+0000-00-00T00:00:00.00000000Z"),
+        (true,  false, 9) => w!(b"+0000-00-00T00:00:00.000000000Z"),
+        (false, true,  0) => w!(b"+00000000T000000+00:00"),
+        (false, true,  1) => w!(b"+00000000T000000.0+00:00"),
+        (false, true,  2) => w!(b"+00000000T000000.00+00:00"),
+        (false, true,  3) => w!(b"+00000000T000000.000+00:00"),
+        (false, true,  4) => w!(b"+00000000T000000.0000+00:00"),
+        (false, true,  5) => w!(b"+00000000T000000.00000+00:00"),
+        (false, true,  6) => w!(b"+00000000T000000.000000+00:00"),
+        (false, true,  7) => w!(b"+00000000T000000.0000000+00:00"),
+        (false, true,  8) => w!(b"+00000000T000000.00000000+00:00"),
+        (false, true,  9) => w!(b"+00000000T000000.000000000+00:00"),
+        (false, false, 0) => w!(b"+00000000T000000Z"),
+        (false, false, 1) => w!(b"+00000000T000000.0Z"),
+        (false, false, 2) => w!(b"+00000000T000000.00Z"),
+        (false, false, 3) => w!(b"+00000000T000000.000Z"),
+        (false, false, 4) => w!(b"+00000000T000000.0000Z"),
+        (false, false, 5) => w!(b"+00000000T000000.00000Z"),
+        (false, false, 6) => w!(b"+00000000T000000.000000Z"),
+        (false, false, 7) => w!(b"+00000000T000000.0000000Z"),
+        (false, false, 8) => w!(b"+00000000T000000.00000000Z"),
+        (false, false, 9) => w!(b"+00000000T000000.000000000Z"),
         _ => unsafe { core::hint::unreachable_unchecked() },
     }
 
@@ -113,7 +117,12 @@ pub struct TimestampStr<S: IsValidFormat>(pub(crate) S::Storage);
 impl<S: IsValidFormat> AsRef<str> for TimestampStr<S> {
     #[inline]
     fn as_ref(&self) -> &str {
-        unsafe { core::str::from_utf8_unchecked(self.0.as_ref()) }
+        unsafe {
+            // skip + sign if positive
+            let bytes = self.0.as_ref();
+            let is_positive = *bytes.get_unchecked(0) == b'+';
+            core::str::from_utf8_unchecked(bytes.get_unchecked(is_positive as usize..))
+        }
     }
 }
 

@@ -6,12 +6,9 @@ static LOOKUP: [[u8; 2]; 100] = {
     let mut table = [[0; 2]; 100];
 
     let mut i: u8 = 0;
-    while i < 10 {
-        let mut j: u8 = 0;
-        while j < 10 {
-            table[(i as usize) * 10 + (j as usize)] = [i + b'0', j + b'0'];
-            j += 1;
-        }
+    while i < 100 {
+        let (a, b) = (i / 10, i % 10);
+        table[i as usize] = [a + b'0', b + b'0'];
         i += 1;
     }
 
@@ -74,12 +71,17 @@ where
 
     // decompose timestamp
     //let (year, month, day) = get_ymd(ts.date());
-    let (year, month, day) = ts.to_calendar_date();
+    let (mut year, month, day) = ts.to_calendar_date();
     let (hour, minute, second, nanoseconds) = ts.as_hms_nano();
 
     let mut buf = template::<F, O, P>();
 
-    let mut pos = 0;
+    if unlikely!(year < 0) {
+        year = -year; // formatting only accepts unsigned integers
+        unsafe { buf.as_mut().as_mut_ptr().write(b'-'); }
+    }
+
+    let mut pos = 1;
 
     macro_rules! write_num {
         ($s: expr, $len: expr, $max: expr) => {unsafe {

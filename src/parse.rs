@@ -121,35 +121,41 @@ macro_rules! impl_fp {
 
 impl_fp!(u8, u16, u32);
 
-pub fn parse_iso8601(ts: &str) -> Option<PrimitiveDateTime> {
-    let b = ts.as_bytes();
+pub fn parse_iso8601(b: &[u8]) -> Option<PrimitiveDateTime> {
+    let negate = matches!(b.get(0), Some(b'-')) as i16;
+    let mut offset = negate as usize;
 
-    #[inline(always)]
-    fn parse_offset<T: FastParse, const N: usize>(b: &[u8], offset: usize) -> Option<T> {
-        b.get(offset..(offset + N)).and_then(|x| T::parse(x))
+    macro_rules! parse {
+        ($len:expr, $ty:ty $(, $eat_byte:expr)?) => {loop {
+            if let Some(chunk) = b.get(offset..(offset + $len)) {
+                if let Some(res) = <$ty as FastParse>::parse(chunk) {
+                    offset += $len;
+
+                    $(
+                        // conditional increment is slightly faster than branchless
+                        if let Some($eat_byte) = b.get(offset) {
+                            offset += 1;
+                        }
+                    )?
+
+                    break res;
+                }
+            }
+
+            return None;
+        }};
     }
 
-    #[inline(always)]
-    fn is_byte(b: &[u8], offset: usize, byte: u8) -> usize {
-        matches!(b.get(offset), Some(&b) if b == byte) as usize
-    }
-
-    let mut offset = 0;
-
-    let year = parse_offset::<u16, 4>(b, offset)?;
-    offset += 4;
-    offset += is_byte(b, offset, b'-'); // YYYY-?
+    let mut year = parse!(4, u16, b'-') as i16; // YYYY-?
+    year = (year ^ -negate) + negate; // branchless conditional negation
 
     //println!("YEAR: {}", year);
 
-    let month = parse_offset::<u8, 2>(b, offset)?;
-    offset += 2;
-    offset += is_byte(b, offset, b'-'); // MM-?
+    let month = parse!(2, u8, b'-'); // MM-?
 
     //println!("MONTH: {}", month);
 
-    let day = parse_offset::<u8, 2>(b, offset)?;
-    offset += 2; // DD
+    let day = parse!(2, u8); // DD
 
     //println!("DAY: {}", day);
 
@@ -186,15 +192,11 @@ pub fn parse_iso8601(ts: &str) -> Option<PrimitiveDateTime> {
         _ => return None,
     }
 
-    let hour = parse_offset::<u8, 2>(b, offset)?;
-    offset += 2;
-    offset += is_byte(b, offset, b':');
+    let hour = parse!(2, u8, b':'); // HH:?
 
     //println!("HOUR: {}", hour);
 
-    let minute = parse_offset::<u8, 2>(b, offset)?;
-    offset += 2;
-    offset += is_byte(b, offset, b':');
+    let minute = parse!(2, u8, b':'); // mm:?
 
     //println!("MINUTE: {}", minute);
 
@@ -202,8 +204,7 @@ pub fn parse_iso8601(ts: &str) -> Option<PrimitiveDateTime> {
     let mut nanosecond = 0;
 
     if let Some(b'0'..=b'9') = b.get(offset) {
-        second = parse_offset::<u8, 2>(b, offset)?;
-        offset += 2;
+        second = parse!(2, u8);
 
         if let Some(b'.' | b',') = b.get(offset) {
             offset += 1;
@@ -225,13 +226,20 @@ pub fn parse_iso8601(ts: &str) -> Option<PrimitiveDateTime> {
 
         // if leap seconds, ignore the parsed value and set it to just before 60
         // doing it this way avoids duplicate code to consume the extra characters
-        if unlikely!(second == 60) {
+        // NOTE: This will also "fix" malformed seconds input
+        if unlikely!(second > 59) {
+            // but don't neglect invalid input if necessary
+            #[cfg(feature = "verify")]
+            if unlikely!(second > 60) {
+                return None;
+            }
+
             second = 59;
             nanosecond = 999_999_999;
         }
     }
 
-    unsafe { assume!(nanosecond <= 999_999_999) };
+    unsafe { assume!(nanosecond <= 999_999_999 && second <= 59) };
 
     let mut date_time = match Time::from_hms_nano(hour, minute, second, nanosecond) {
         Ok(time) => PrimitiveDateTime::new(ymd, time),
@@ -257,13 +265,13 @@ pub fn parse_iso8601(ts: &str) -> Option<PrimitiveDateTime> {
                 }
             }
 
-            let offset_hour = parse_offset::<u8, 2>(b, offset)? as u64;
-            offset += 2;
-            offset += is_byte(b, offset, b':');
-            let offset_minute = parse_offset::<u8, 2>(b, offset)? as u64;
-            offset += 2;
+            let offset_hour = parse!(2, u8, b':') as u64;
+            let offset_minute = parse!(2, u8) as u64;
 
             let mut offset_seconds = (60 * 60 * offset_hour + offset_minute * 60) as i64;
+
+            //let negate = (c != b'+') as i64;
+            //offset_seconds = (offset_seconds ^ -negate) + negate;
 
             if c != b'+' {
                 offset_seconds *= -1;
@@ -276,8 +284,18 @@ pub fn parse_iso8601(ts: &str) -> Option<PrimitiveDateTime> {
         Some(b'U' | b'u') => match b.get(offset..(offset + 2)) {
             None => return None,
             Some(tc) => {
+                // // convert to u16 and make lowercase
+                // let tc = 0x2020 | unsafe { u16::from_le_bytes(copy_buf::<2>(tc)) };
+                // if tc != u16::from_le_bytes(*b"tc") {
+                //     return None;
+                // }
+
+                // if ((tc[1] as u16) << 8 | tc[0] as u16 | 0x2020) != u16::from_le_bytes(*b"tc") {
+                //     return None;
+                // }
+
                 for (c, r) in tc.iter().zip(b"tc") {
-                    if (*c | 32) != *r {
+                    if (*c | 0x20) != *r {
                         return None;
                     }
                 }
