@@ -20,7 +20,8 @@ rusqlite = ["dep:rusqlite", "std"]
 schema = ["schemars"]
 nightly = []
 verify = [] # Verify numeric input during parsing
-default = ["std", "serde"]
+lookup = [] # Use lookup table during formatting
+default = ["std", "serde", "lookup"]
 
 [dependencies]
 serde = { optional = true, version = "1" }
