@@ -274,7 +274,7 @@ pub fn parse_iso8601(b: &[u8]) -> Option<PrimitiveDateTime> {
             //offset_seconds = (offset_seconds ^ -negate) + negate;
 
             if c != b'+' {
-                offset_seconds *= -1;
+                offset_seconds = -offset_seconds;
             }
 
             date_time = date_time.checked_add(Duration::seconds(offset_seconds))?;
