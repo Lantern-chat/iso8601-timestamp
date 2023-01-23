@@ -18,7 +18,7 @@ unsafe fn copy_buf<const N: usize>(s: &[u8]) -> [u8; N] {
 #[cfg(any(test, not(feature = "verify")))]
 #[inline(always)]
 fn parse_2(s: &[u8]) -> u8 {
-    // NOTE: Despite doing the same as the loop below, this has a hair faster
+    // NOTE: Despite doing the same as the loop below, this is a hair faster
     // (like a single clock cycle) due to instruction-level parallelism
     (s[0] & 0x0f) * 10 + (s[1] & 0x0f)
 }
