@@ -1,7 +1,7 @@
 #![allow(deprecated)]
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use iso8601_timestamp::Timestamp;
+use iso8601_timestamp::{Timestamp, UtcOffset};
 
 fn criterion_benchmark(c: &mut Criterion) {
     let offset = time::UtcOffset::from_hms(-4, 30, 0).unwrap();
@@ -49,6 +49,12 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     parse_group.bench_function("iso8601_custom", |b| {
         let ts = black_box(Timestamp::now_utc().format());
+
+        b.iter(|| Timestamp::parse(&ts));
+    });
+
+    parse_group.bench_function("iso8601_custom_cst", |b| {
+        let ts = black_box(Timestamp::now_utc().format_with_offset(UtcOffset::from_hms(-6, 0, 0).unwrap()));
 
         b.iter(|| Timestamp::parse(&ts));
     });

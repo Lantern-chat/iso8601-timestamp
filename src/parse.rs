@@ -5,6 +5,7 @@ trait FastParse: Sized {
     fn parse(s: &[u8]) -> Option<Self>;
 }
 
+#[cfg(any(test, not(feature = "verify")))]
 #[inline(always)]
 unsafe fn copy_buf<const N: usize>(s: &[u8]) -> [u8; N] {
     assume!(s.len() == N);
@@ -14,65 +15,23 @@ unsafe fn copy_buf<const N: usize>(s: &[u8]) -> [u8; N] {
     buf
 }
 
+#[cfg(any(test, not(feature = "verify")))]
 #[inline(always)]
-#[allow(dead_code)]
-fn overflows2(x: u16) -> bool {
-    const U: u16 = !0 / 255;
-    0 != (x.wrapping_add(U * (127 - 9)) | x) & (U * 128)
+fn parse_2(s: &[u8]) -> u8 {
+    // NOTE: Despite doing the same as the loop below, this has a hair faster
+    // (like a single clock cycle) due to instruction-level parallelism
+    (s[0] & 0x0f) * 10 + (s[1] & 0x0f)
 }
 
-/// https://graphics.stanford.edu/~seander/bithacks.html#HasMoreInWord
+#[cfg(any(test, not(feature = "verify")))]
 #[inline(always)]
-#[allow(dead_code)]
-fn overflows4(x: u32) -> bool {
-    const U: u32 = !0 / 255;
-    0 != (x.wrapping_add(U * (127 - 9)) | x) & (U * 128)
-}
-
-#[allow(dead_code)]
-#[inline(always)]
-fn overflows(s: &[u8]) -> bool {
-    let mut overflow = false;
-
-    for &byte in s {
-        overflow |= (byte < b'0') || (byte > b'9');
-    }
-
-    overflow
-}
-
-#[inline]
-fn parse_2(s: &[u8]) -> Option<u16> {
-    let mut digits = u16::from_le_bytes(unsafe { copy_buf::<2>(s) });
-
-    #[cfg(feature = "verify")]
-    if overflows(s) {
-        return None;
-    }
-
-    // NOTE: This may be slower than brute-force
-    //if overflows2(digits - 0x3030) {
-    //    return None;
-    //}
-
-    digits = ((digits & 0x0f00) >> 8) + ((digits & 0x0f) * 10);
-
-    Some(digits)
-}
-
-#[inline]
-fn parse_4(s: &[u8]) -> Option<u16> {
+fn parse_4(s: &[u8]) -> u16 {
     let mut digits = u32::from_le_bytes(unsafe { copy_buf::<4>(s) });
-
-    #[cfg(feature = "verify")]
-    if overflows4(digits - 0x30303030) {
-        return None;
-    }
 
     digits = ((digits & 0x0f000f00) >> 8) + ((digits & 0x000f000f) * 10);
     digits = ((digits & 0x00ff00ff) >> 16) + ((digits & 0x000000ff) * 100);
 
-    Some(digits as u16)
+    digits as u16
 }
 
 macro_rules! impl_fp {
@@ -80,34 +39,29 @@ macro_rules! impl_fp {
         impl FastParse for $t {
             #[inline(always)]
             fn parse(s: &[u8]) -> Option<Self> {
-                #[cfg(feature = "verify")]
+                #[cfg(not(feature = "verify"))]
                 match s.len() {
-                    2 => return parse_2(s).map(|v| v as $t),
-                    4 => return parse_4(s).map(|v| v as $t),
+                    2 => return Some(parse_2(s) as $t),
+                    4 => return Some(parse_4(s) as $t),
+                    0 => return None,
                     _ => {}
                 }
 
-                #[cfg(not(feature = "verify"))]
-                unsafe {
-                    match s.len() {
-                        2 => return Some(parse_2(s).unwrap_unchecked() as $t),
-                        4 => return Some(parse_4(s).unwrap_unchecked() as $t),
-                        _ => {}
-                    }
-                }
-
-                let mut num = 0;
+                let mut num: $t = 0;
 
                 #[allow(unused_mut)]
                 let mut overflow = false;
 
+                #[cfg(feature = "verify")]
                 for byte in s {
                     let digit = byte.wrapping_sub(b'0');
+                    overflow |= digit > 9;
+                    num = num.wrapping_mul(10) + digit as $t;
+                }
 
-                    #[cfg(feature = "verify")]
-                    { overflow |= digit > 9 };
-
-                    num = (num * 10) + digit as $t;
+                #[cfg(not(feature = "verify"))]
+                for byte in s {
+                    num = num.wrapping_mul(10) + (byte & 0x0f) as $t;
                 }
 
                 match overflow {
@@ -121,6 +75,7 @@ macro_rules! impl_fp {
 
 impl_fp!(u8, u16, u32);
 
+#[inline]
 pub fn parse_iso8601(b: &[u8]) -> Option<PrimitiveDateTime> {
     let negate = matches!(b.get(0), Some(b'-')) as i16;
     let mut offset = negate as usize;
@@ -147,19 +102,15 @@ pub fn parse_iso8601(b: &[u8]) -> Option<PrimitiveDateTime> {
     }
 
     let mut year = parse!(4, u16, b'-') as i16; // YYYY-?
-    year = (year ^ -negate) + negate; // branchless conditional negation
 
-    //println!("YEAR: {}", year);
+    // branchless conditional negation seems faster for i16
+    // done immediately after parsing to avoid keeping the negate register
+    year = (year ^ -negate) + negate;
 
     let month = parse!(2, u8, b'-'); // MM-?
-
-    //println!("MONTH: {}", month);
-
     let day = parse!(2, u8); // DD
 
-    //println!("DAY: {}", day);
-
-    let ymd = Date::from_calendar_date(
+    let ymd = match Date::from_calendar_date(
         year as i32,
         // NOTE: Inlining this is cheaper than `Month::try_from(month).ok()?`
         match month {
@@ -178,10 +129,10 @@ pub fn parse_iso8601(b: &[u8]) -> Option<PrimitiveDateTime> {
             _ => return None,
         },
         day,
-    )
-    .ok()?;
-
-    //println!("{}-{}-{}", year, month, day);
+    ) {
+        Ok(ymd) => ymd,
+        Err(_) => return None,
+    };
 
     match b.get(offset) {
         Some(b'T' | b't' | b' ' | b'_') => {
@@ -193,12 +144,7 @@ pub fn parse_iso8601(b: &[u8]) -> Option<PrimitiveDateTime> {
     }
 
     let hour = parse!(2, u8, b':'); // HH:?
-
-    //println!("HOUR: {}", hour);
-
     let minute = parse!(2, u8, b':'); // mm:?
-
-    //println!("MINUTE: {}", minute);
 
     let mut second = 0;
     let mut nanosecond = 0;
@@ -211,6 +157,8 @@ pub fn parse_iso8601(b: &[u8]) -> Option<PrimitiveDateTime> {
 
             let mut factor: u32 = 100_000_000; // up to 9 decimal places
 
+            // NOTE: After 9 decimal places, this does nothing other than consume digits,
+            // as factor will be zero, so nanosecond will not change
             while let Some(&c) = b.get(offset) {
                 let d = c.wrapping_sub(b'0');
 
@@ -270,9 +218,7 @@ pub fn parse_iso8601(b: &[u8]) -> Option<PrimitiveDateTime> {
 
             let mut offset_seconds = (60 * 60 * offset_hour + offset_minute * 60) as i64;
 
-            //let negate = (c != b'+') as i64;
-            //offset_seconds = (offset_seconds ^ -negate) + negate;
-
+            // NOTE: branchless conditional negate seems slower here
             if c != b'+' {
                 offset_seconds = -offset_seconds;
             }
@@ -284,16 +230,6 @@ pub fn parse_iso8601(b: &[u8]) -> Option<PrimitiveDateTime> {
         Some(b'U' | b'u') => match b.get(offset..(offset + 2)) {
             None => return None,
             Some(tc) => {
-                // // convert to u16 and make lowercase
-                // let tc = 0x2020 | unsafe { u16::from_le_bytes(copy_buf::<2>(tc)) };
-                // if tc != u16::from_le_bytes(*b"tc") {
-                //     return None;
-                // }
-
-                // if ((tc[1] as u16) << 8 | tc[0] as u16 | 0x2020) != u16::from_le_bytes(*b"tc") {
-                //     return None;
-                // }
-
                 for (c, r) in tc.iter().zip(b"tc") {
                     if (*c | 0x20) != *r {
                         return None;
@@ -329,7 +265,7 @@ mod tests {
         for i in 0..=99 {
             let s = format!("{:02}", i);
             let res = parse_2(s.as_bytes());
-            assert_eq!(res, Some(i));
+            assert_eq!(res, i);
         }
     }
 
@@ -338,37 +274,7 @@ mod tests {
         for i in 0..=9999 {
             let s = format!("{:04}", i);
             let res = parse_4(s.as_bytes());
-            assert_eq!(res, Some(i));
-        }
-    }
-
-    #[test]
-    fn test_is_digit() {
-        fn is_digit_simple(i: &[u8]) -> bool {
-            for &b in i {
-                if b > 9 {
-                    return false;
-                }
-            }
-            true
-        }
-
-        for i in 0..u16::MAX {
-            assert_eq!(
-                !overflows2(i),
-                is_digit_simple(&i.to_le_bytes()),
-                "{:?}",
-                i.to_le_bytes()
-            );
-        }
-
-        for i in 0..u32::MAX {
-            assert_eq!(
-                !overflows4(i),
-                is_digit_simple(&i.to_le_bytes()),
-                "{:?}",
-                i.to_le_bytes()
-            );
+            assert_eq!(res, i);
         }
     }
 }

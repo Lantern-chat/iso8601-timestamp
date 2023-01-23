@@ -274,7 +274,7 @@ impl Timestamp {
     }
 
     /// Parse to UTC timestamp from any ISO8601 string. Offsets are applied during parsing.
-    #[inline]
+    #[inline(never)] // Avoid deoptimizing the general &str case when presented with a fixed-size string
     pub fn parse(ts: &str) -> Option<Self> {
         parse::parse_iso8601(ts.as_bytes()).map(Timestamp)
     }
