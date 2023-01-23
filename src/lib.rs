@@ -549,7 +549,7 @@ mod pg_impl {
 
 #[cfg(feature = "rusqlite")]
 mod rusqlite_impl {
-    use super::Timestamp;
+    use super::{Duration, Timestamp};
 
     use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ToSql, ToSqlOutput, Value, ValueRef};
     use rusqlite::Error;
@@ -566,6 +566,7 @@ mod rusqlite_impl {
 
     impl FromSql for Timestamp {
         fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+            // https://www.sqlite.org/lang_datefunc.html
             match value {
                 ValueRef::Text(bytes) => match core::str::from_utf8(bytes) {
                     Err(e) => Err(FromSqlError::Other(Error::Utf8Error(e).into())),
@@ -574,7 +575,11 @@ mod rusqlite_impl {
                         None => Err(FromSqlError::Other(InvalidTimestamp.into())),
                     },
                 },
-                ValueRef::Integer(ts) => Ok(Timestamp::from_unix_timestamp(ts)),
+                // according to the link above, dates stored as integers are seconds since unix epoch
+                ValueRef::Integer(ts) => Timestamp::UNIX_EPOCH
+                    .checked_add(Duration::seconds(ts))
+                    .ok_or_else(|| FromSqlError::OutOfRange(ts)),
+
                 _ => Err(FromSqlError::InvalidType),
             }
         }

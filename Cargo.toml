@@ -1,6 +1,6 @@
 [package]
 name = "iso8601-timestamp"
-version = "0.2.8"
+version = "0.2.9"
 authors = ["novacrazy <novacrazy@gmail.com>"]
 edition = "2018"
 description = "High-performance ISO8601 Timestamp formatting and parsing"
@@ -27,7 +27,7 @@ default = ["std", "serde", "lookup"]
 
 [dependencies]
 serde = { optional = true, version = "1" }
-time = { version = "0.3", features = ["macros"] }
+time = { version = "0.3", default-features = false, features = ["macros"] }
 postgres-types = { optional = true, version = "0.2.2", features = ["with-time-0_3"] }
 bytes = { optional = true, version = "1.1.0" }
 generic-array = "0.14.4"
