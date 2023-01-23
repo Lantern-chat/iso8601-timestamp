@@ -12,6 +12,9 @@ include = ["src/**/*", "LICENSE-*", "README.md"]
 documentation = "https://docs.rs/iso8601-timestamp"
 repository = "https://github.com/Lantern-chat/iso8601-timestamp"
 
+[package.metadata.docs.rs]
+features = ["serde", "pg", "schema", "rusqlite", "rand", "quickcheck"]
+
 [features]
 std = []
 bson = []
@@ -58,6 +61,3 @@ codegen-units = 1
 opt-level = 3
 lto = 'fat'
 codegen-units = 1
-
-[package.metadata.docs.rs]
-features = ["serde", "pg", "schema", "rusqlite"]
