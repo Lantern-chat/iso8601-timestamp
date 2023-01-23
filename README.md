@@ -33,10 +33,13 @@ When serializing to non-human-readable formats, such as binary formats, the `Tim
 
 Similarly, when deserializing, it supports either an ISO8601 string or an `i64` representing a unix timestamp in milliseconds.
 
-## Features
+## Cargo Features
 
 * `std` (default)
     - Enables standard library features, such as getting the current time.
+
+* `lookup` (default)
+    - Enables use of a 200-byte lookup table during formatting. Slightly faster with a hot cache. Disabling saves 200 bytes at a 3-4% slowdown.
 
 * `serde` (default)
     - Enables serde implementations for `Timestamp` and `TimestampStr`
@@ -59,3 +62,9 @@ Similarly, when deserializing, it supports either an ISO8601 string or an `i64` 
 
 * `bson`
     - Enables `visit_map` implementation to handle deserialising BSON (MongoDB) DateTime format, `{ $date: string }`.
+
+* `rand`
+    - Enables `rand` implementations, to generate random timestamps.
+
+* `quickcheck`
+    - Enables `quickcheck`'s `Arbitrary` implementation on `Timestamp`

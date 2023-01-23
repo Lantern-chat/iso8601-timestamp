@@ -8,6 +8,8 @@ fn test_format_iso8601() {
     let formatted = now.format();
 
     println!("{}", formatted);
+
+    assert_eq!(Timestamp::UNIX_EPOCH.format(), "1970-01-01T00:00:00.000Z");
 }
 
 #[test]
@@ -78,8 +80,8 @@ fn test_unix_timestamp_ms() {
     let now_ts = Timestamp::now_utc();
     let now_ot = now_ts.assume_offset(time::UtcOffset::UTC);
 
-    let unix_ms_a = now_ts.to_unix_timestamp_ms();
-    let unix_ms_b = (now_ot.unix_timestamp_nanos() / 1_000_000) as i64;
+    let unix_ms_a = now_ts.duration_since(Timestamp::UNIX_EPOCH).whole_milliseconds();
+    let unix_ms_b = (now_ot.unix_timestamp_nanos() / 1_000_000) as i128;
 
     assert_eq!(unix_ms_a, unix_ms_b);
 }

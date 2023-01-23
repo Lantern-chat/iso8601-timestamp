@@ -36,10 +36,13 @@
 //!
 //! Similarly, when deserializing, it supports either an ISO8601 string or an `i64` representing a unix timestamp in milliseconds.
 //!
-//! ## Features
+//! ## Cargo Features
 //!
 //! * `std` (default)
 //!     - Enables standard library features, such as getting the current time.
+//!
+//! * `lookup` (default)
+//!     - Enables use of a 200-byte lookup table during formatting. Slightly faster with a hot cache. Disabling saves 200 bytes at a 3-4% slowdown.
 //!
 //! * `serde` (default)
 //!     - Enables serde implementations for `Timestamp` and `TimestampStr`
@@ -62,16 +65,23 @@
 //!
 //! * `bson`
 //!     - Enables `visit_map` implementation to handle deserialising BSON (MongoDB) DateTime format, `{ $date: string }`.
+//!
+//! * `rand`
+//!     - Enables `rand` implementations, to generate random timestamps.
+//!
+//! * `quickcheck`
+//!     - Enables `quickcheck`'s `Arbitrary` implementation on `Timestamp`
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(feature = "nightly", feature(core_intrinsics))]
 
-use core::ops::{Deref, DerefMut};
+use core::ops::{AddAssign, Deref, DerefMut, SubAssign};
 
 #[cfg(feature = "std")]
 use std::time::SystemTime;
 
-use time::{OffsetDateTime, PrimitiveDateTime, UtcOffset};
+pub use time::{Duration, UtcOffset};
+use time::{OffsetDateTime, PrimitiveDateTime};
 
 pub use generic_array::typenum;
 use typenum as t;
@@ -89,7 +99,7 @@ pub use ts_str::{FormatString, TimestampStr};
 /// UTC Timestamp with nanosecond precision, millisecond-precision when serialized to serde (JSON).
 ///
 /// A `Deref`/`DerefMut` implementation is provided to gain access to the inner `PrimitiveDateTime` object.
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct Timestamp(PrimitiveDateTime);
 
@@ -172,15 +182,17 @@ impl Timestamp {
     /// Unix Epoch -- 1970-01-01 Midnight
     pub const UNIX_EPOCH: Self = Timestamp(Self::PRIMITIVE_UNIX_EPOCH);
 
+    #[deprecated = "Use `Timestamp::UNIX_EPOCH.checked_add(Duration::seconds(seconds))`"]
     pub fn from_unix_timestamp(seconds: i64) -> Self {
         Self::UNIX_EPOCH + time::Duration::seconds(seconds)
     }
 
+    #[deprecated = "Use `Timestamp::UNIX_EPOCH.checked_add(Duration::milliseconds(milliseconds))`"]
     pub fn from_unix_timestamp_ms(milliseconds: i64) -> Self {
         Self::UNIX_EPOCH + time::Duration::milliseconds(milliseconds)
     }
 
-    #[deprecated = "Use `self.duration_since(Timestamp::UNIX_EPOCH).whole_milliseconds() as i64`"]
+    #[deprecated = "Use `self.duration_since(Timestamp::UNIX_EPOCH).whole_milliseconds()`"]
     pub fn to_unix_timestamp_ms(self) -> i64 {
         const UNIX_EPOCH_JULIAN_DAY: i64 = time::macros::date!(1970 - 01 - 01).to_julian_day() as i64;
 
@@ -197,7 +209,7 @@ impl Timestamp {
 
     /// Returns the amount of time elapsed from an earlier point in time.
     #[inline]
-    pub fn duration_since(self, earlier: Self) -> time::Duration {
+    pub fn duration_since(self, earlier: Self) -> Duration {
         self.0 - earlier.0
     }
 
@@ -272,6 +284,44 @@ impl Timestamp {
     pub const fn assume_offset(self, offset: UtcOffset) -> time::OffsetDateTime {
         self.0.assume_offset(offset)
     }
+
+    /// Computes `self + duration`, returning `None` if an overflow occurred.
+    ///
+    /// See [`PrimitiveDateTime::checked_add`] for more implementation details
+    #[inline]
+    pub const fn checked_add(self, duration: Duration) -> Option<Self> {
+        match self.0.checked_add(duration) {
+            Some(ts) => Some(Timestamp(ts)),
+            None => None,
+        }
+    }
+
+    /// Computes `self - duration`, returning `None` if an overflow occurred.
+    ///
+    /// See [`PrimitiveDateTime::checked_sub`] for more implementation details
+    #[inline]
+    pub const fn checked_sub(self, duration: Duration) -> Option<Self> {
+        match self.0.checked_sub(duration) {
+            Some(ts) => Some(Timestamp(ts)),
+            None => None,
+        }
+    }
+
+    /// Computes `self + duration`, saturating value on overflow.
+    ///
+    /// See [`PrimitiveDateTime::saturating_add`] for more implementation details
+    #[inline]
+    pub const fn saturating_add(self, duration: Duration) -> Self {
+        Timestamp(self.0.saturating_add(duration))
+    }
+
+    /// Computes `self - duration`, saturating value on overflow.
+    ///
+    /// See [`PrimitiveDateTime::saturating_sub`] for more implementation details
+    #[inline]
+    pub const fn saturating_sub(self, duration: Duration) -> Self {
+        Timestamp(self.0.saturating_sub(duration))
+    }
 }
 
 impl Deref for Timestamp {
@@ -316,12 +366,33 @@ where
     }
 }
 
+impl<T> AddAssign<T> for Timestamp
+where
+    PrimitiveDateTime: AddAssign<T>,
+{
+    #[inline]
+    fn add_assign(&mut self, rhs: T) {
+        self.0 += rhs;
+    }
+}
+
+impl<T> SubAssign<T> for Timestamp
+where
+    PrimitiveDateTime: SubAssign<T>,
+{
+    #[inline]
+    fn sub_assign(&mut self, rhs: T) {
+        self.0 -= rhs;
+    }
+}
+
 #[cfg(feature = "serde")]
 mod serde_impl {
-    #[cfg(feature = "bson")]
-    use serde::de::MapAccess;
     use serde::de::{Deserialize, Deserializer, Error, Visitor};
     use serde::ser::{Serialize, Serializer};
+
+    #[cfg(feature = "bson")]
+    use serde::de::MapAccess;
 
     use super::Timestamp;
 
@@ -338,6 +409,8 @@ mod serde_impl {
             }
         }
     }
+
+    const OUT_OF_RANGE: &str = "Milliseconds out of range";
 
     impl<'de> Deserialize<'de> for Timestamp {
         #[inline]
@@ -395,13 +468,15 @@ mod serde_impl {
 
                     // Match `$date` and only date.
                     if key == "$date" {
-                        Ok(match v {
-                            StringOrNumberLong::Str(ts) => ts,
-                            StringOrNumberLong::Num { num } => Timestamp::from_unix_timestamp_ms(
-                                num.parse::<i64>()
-                                    .map_err(|_| M::Error::custom("Invalid Number"))?,
-                            ),
-                        })
+                        match v {
+                            StringOrNumberLong::Str(ts) => Ok(ts),
+                            StringOrNumberLong::Num { num } => match num.parse::<i64>() {
+                                Ok(ms) => Timestamp::UNIX_EPOCH
+                                    .checked_add(time::Duration::milliseconds(ms))
+                                    .ok_or_else(|| M::Error::custom(OUT_OF_RANGE)),
+                                Err(_) => return Err(M::Error::custom("Invalid Number")),
+                            },
+                        }
                     } else {
                         // We don't expect anything else in the map in any case,
                         // but throw an error if we do encounter anything weird.
@@ -414,7 +489,9 @@ mod serde_impl {
                 where
                     E: Error,
                 {
-                    Ok(Timestamp::from_unix_timestamp_ms(v))
+                    Timestamp::UNIX_EPOCH
+                        .checked_add(time::Duration::milliseconds(v))
+                        .ok_or_else(|| E::custom(OUT_OF_RANGE))
                 }
 
                 #[inline]
@@ -422,7 +499,12 @@ mod serde_impl {
                 where
                     E: Error,
                 {
-                    Ok(Timestamp::UNIX_EPOCH + std::time::Duration::from_millis(v))
+                    let seconds = v / 1000;
+                    let nanoseconds = (v % 1_000) * 1_000_000;
+
+                    Timestamp::UNIX_EPOCH
+                        .checked_add(time::Duration::new(seconds as i64, nanoseconds as i32))
+                        .ok_or_else(|| E::custom(OUT_OF_RANGE))
                 }
             }
 
@@ -529,6 +611,46 @@ mod schema_impl {
                 instance_type: Some(SingleOrVec::Single(Box::new(InstanceType::String))),
                 ..Default::default()
             })
+        }
+    }
+}
+
+#[cfg(feature = "rand")]
+mod rand_impl {
+    use rand::distributions::{Distribution, Standard};
+    use rand::Rng;
+
+    use super::Timestamp;
+
+    impl Distribution<Timestamp> for Standard {
+        #[inline]
+        fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Timestamp {
+            Timestamp(rng.gen())
+        }
+    }
+}
+
+#[cfg(feature = "quickcheck")]
+mod quickcheck_impl {
+    extern crate alloc;
+
+    use alloc::boxed::Box;
+    use quickcheck::{Arbitrary, Gen};
+
+    use super::Timestamp;
+
+    impl Arbitrary for Timestamp {
+        #[inline(always)]
+        fn arbitrary(g: &mut Gen) -> Self {
+            Timestamp(Arbitrary::arbitrary(g))
+        }
+
+        fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+            Box::new(
+                (self.date(), self.time())
+                    .shrink()
+                    .map(|(d, t)| Timestamp(time::PrimitiveDateTime::new(d, t))),
+            )
         }
     }
 }

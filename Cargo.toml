@@ -1,6 +1,6 @@
 [package]
 name = "iso8601-timestamp"
-version = "0.2.7"
+version = "0.2.8"
 authors = ["novacrazy <novacrazy@gmail.com>"]
 edition = "2018"
 description = "High-performance ISO8601 Timestamp formatting and parsing"
@@ -17,6 +17,8 @@ std = []
 bson = []
 pg = ["postgres-types", "bytes", "std"]
 rusqlite = ["dep:rusqlite", "std"]
+rand = ["dep:rand", "time/rand"]
+quickcheck = ["dep:quickcheck", "time/quickcheck"]
 schema = ["schemars"]
 nightly = []
 verify = [] # Verify numeric input during parsing
@@ -30,7 +32,9 @@ postgres-types = { optional = true, version = "0.2.2", features = ["with-time-0_
 bytes = { optional = true, version = "1.1.0" }
 generic-array = "0.14.4"
 schemars = { optional = true, version = "0.8.8" }
-rusqlite = { optional = true, version = "0.28" }
+rusqlite = { optional = true, version = "0.28", default-features = false }
+rand = { optional = true, version = "0.8", default-features = false }
+quickcheck = { optional = true, version = "1.0", default-features = false }
 
 [dev-dependencies]
 time = { version = "0.3", features = ["macros", "parsing", "formatting"] }
