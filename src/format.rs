@@ -56,9 +56,6 @@ pub fn do_format<F: t::Bit, O: t::Bit, P: t::Unsigned>(ts: PrimitiveDateTime, of
 where
     FormatString<F, O, P>: IsValidFormat,
 {
-    #[cfg(feature = "lookup")]
-    let lookup = LOOKUP.as_ptr();
-
     // Prefetch the table while datetime parts are being destructured.
     // Might cause slightly worse microbenchmark performance,
     // but may save a couple nanoseconds in real applications.
@@ -70,7 +67,7 @@ where
         #[cfg(target_arch = "x86")]
         use core::arch::x86::{_mm_prefetch, _MM_HINT_T0};
 
-        _mm_prefetch::<_MM_HINT_T0>(lookup as _);
+        _mm_prefetch::<_MM_HINT_T0>(LOOKUP.as_ptr() as _);
     }
 
     // decompose timestamp
@@ -78,26 +75,27 @@ where
     let (mut year, month, day) = ts.to_calendar_date();
     let (hour, minute, second, nanoseconds) = ts.as_hms_nano();
 
-    let mut buf = template::<F, O, P>();
+    let mut template = template::<F, O, P>();
+    let buf = template.as_mut();
 
     if unlikely!(year < 0) {
         year = -year; // formatting only accepts unsigned integers
-        unsafe { buf.as_mut().as_mut_ptr().write(b'-'); }
+        buf[0] = b'-';
     }
 
     let mut pos = 1;
 
     macro_rules! write_num {
-        ($s: expr, $len: expr, $max: expr) => {unsafe {
+        ($s: expr, $len: expr, $max: expr) => {{
             let mut value = $s;
             let mut len = $len;
             let mut d1 = 0;
 
             // tell the compiler that the max value is known
-            assume!(value <= $max);
+            unsafe { assume!(value <= $max); }
 
-            // get pointer stuff out of the way, freeing dependency chain for next field
-            let buf = buf.as_mut().as_mut_ptr().add(pos);
+            // get offset stuff out of the way, freeing dependency chain for next field
+            let buf = &mut buf[pos..];
             pos += $len;
             if F::BOOL { pos += 1; }
 
@@ -108,22 +106,22 @@ where
 
                 #[cfg(feature = "lookup")]
                 {
-                    let e = *lookup.add(d1 as usize);
-                    len -= 1; *buf.add(len) = e[1];
-                    len -= 1; *buf.add(len) = e[0];
+                    let e = LOOKUP[d1 as usize];
+                    len -= 1; buf[len] = e[1];
+                    len -= 1; buf[len] = e[0];
                 }
 
                 #[cfg(not(feature = "lookup"))]
                 {
                     let (a, b) = (d1 / 10, d1 % 10);
-                    len -= 1; *buf.add(len) = (b as u8) + b'0';
-                    len -= 1; *buf.add(len) = (a as u8) + b'0';
+                    len -= 1; buf[len] = (b as u8) + b'0';
+                    len -= 1; buf[len] = (a as u8) + b'0';
                 }
             }
 
             // handle remainder
             if len == 1 {
-                *buf = (value as u8) + b'0';
+                buf[0] = (value as u8) + b'0';
             }
         }};
     }
@@ -140,7 +138,6 @@ where
 
     // also accepts +- if Full
     match P::USIZE {
-        0 => {}
         1 => write_num!(nanoseconds / 100000000, 1, 9), // S
         2 => write_num!(nanoseconds / 10000000, 2, 99), // SS
         3 => write_num!(nanoseconds / 1000000, 3, 999), // SSS
@@ -150,7 +147,7 @@ where
         7 => write_num!(nanoseconds / 100, 7, 9999999), // SSSSSSS
         8 => write_num!(nanoseconds / 10, 8, 99999999), // SSSSSSSS
         9 => write_num!(nanoseconds / 1, 9, 999999999), // SSSSSSSSS
-        _ => unsafe { core::hint::unreachable_unchecked() }
+        _ => {}
     }
 
     if O::BOOL {
@@ -158,7 +155,7 @@ where
 
         if offset.is_negative() {
             // go back one and overwrite +
-            unsafe { *buf.as_mut().as_mut_ptr().add(pos - 1) = b'-'; }
+            buf[pos - 1] = b'-';
         }
 
         let (h, m, _) = offset.as_hms();
@@ -168,7 +165,7 @@ where
         write_num!(m.abs(), 2, 59); // MZ
     }
 
-    TimestampStr(buf)
+    TimestampStr(template)
 }
 
 #[cfg(test)]
