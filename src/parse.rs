@@ -39,18 +39,9 @@ macro_rules! impl_fp {
         impl FastParse for $t {
             #[inline(always)]
             fn parse(s: &[u8]) -> Option<Self> {
-                #[cfg(not(feature = "verify"))]
-                match s.len() {
-                    2 => return Some(parse_2(s) as $t),
-                    4 => return Some(parse_4(s) as $t),
-                    0 => return None,
-                    _ => {}
-                }
-
-                let mut num: $t = 0;
-
                 #[allow(unused_mut)]
                 let mut overflow = false;
+                let mut num: $t = 0;
 
                 #[cfg(feature = "verify")]
                 for byte in s {
@@ -60,8 +51,15 @@ macro_rules! impl_fp {
                 }
 
                 #[cfg(not(feature = "verify"))]
-                for byte in s {
-                    num = num.wrapping_mul(10) + (byte & 0x0f) as $t;
+                match s.len() {
+                    0 => return None,
+                    2 => return Some(parse_2(s) as $t),
+                    4 => return Some(parse_4(s) as $t),
+                    _ => {
+                        for byte in s {
+                            num = num.wrapping_mul(10) + (byte & 0x0f) as $t;
+                        }
+                    }
                 }
 
                 match overflow {
@@ -187,7 +185,16 @@ pub fn parse_iso8601(b: &[u8]) -> Option<PrimitiveDateTime> {
         }
     }
 
-    unsafe { assume!(nanosecond <= 999_999_999 && second <= 59) };
+    unsafe {
+        assume!(nanosecond <= 999_999_999);
+        assume!(second <= 59);
+
+        // if input is verified, it's impossible for these values to go over 2 digits
+        if cfg!(feature = "verify") {
+            assume!(hour <= 99);
+            assume!(minute <= 99);
+        }
+    }
 
     let mut date_time = match Time::from_hms_nano(hour, minute, second, nanosecond) {
         Ok(time) => PrimitiveDateTime::new(ymd, time),
