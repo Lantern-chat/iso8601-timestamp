@@ -43,13 +43,6 @@ macro_rules! impl_fp {
                 let mut overflow = false;
                 let mut num: $t = 0;
 
-                #[cfg(feature = "verify")]
-                for byte in s {
-                    let digit = byte.wrapping_sub(b'0');
-                    overflow |= digit > 9;
-                    num = num.wrapping_mul(10) + digit as $t;
-                }
-
                 #[cfg(not(feature = "verify"))]
                 match s.len() {
                     0 => return None,
@@ -60,6 +53,13 @@ macro_rules! impl_fp {
                             num = num.wrapping_mul(10) + (byte & 0x0f) as $t;
                         }
                     }
+                }
+
+                #[cfg(feature = "verify")]
+                for byte in s {
+                    let digit = byte.wrapping_sub(b'0');
+                    overflow |= digit > 9;
+                    num = num.wrapping_mul(10) + digit as $t;
                 }
 
                 match overflow {
@@ -75,7 +75,7 @@ impl_fp!(u8, u16, u32);
 
 #[inline]
 pub fn parse_iso8601(b: &[u8]) -> Option<PrimitiveDateTime> {
-    let negate = matches!(b.get(0), Some(b'-')) as i16;
+    let negate = matches!(b.get(0), Some(b'-')) as i32;
     let mut offset = negate as usize;
 
     macro_rules! parse {
@@ -99,7 +99,8 @@ pub fn parse_iso8601(b: &[u8]) -> Option<PrimitiveDateTime> {
         }};
     }
 
-    let mut year = parse!(4, u16, b'-') as i16; // YYYY-?
+    // NOTE: converting u16 to i16 is fine since it's less than 9999
+    let mut year = parse!(4, u16, b'-') as i32; // YYYY-?
 
     // branchless conditional negation seems faster for i16
     // done immediately after parsing to avoid keeping the negate register
@@ -108,36 +109,41 @@ pub fn parse_iso8601(b: &[u8]) -> Option<PrimitiveDateTime> {
     let month = parse!(2, u8, b'-'); // MM-?
     let day = parse!(2, u8); // DD
 
-    let ymd = match Date::from_calendar_date(
-        year as i32,
-        // NOTE: Inlining this is cheaper than `Month::try_from(month).ok()?`
-        match month {
-            1 => Month::January,
-            2 => Month::February,
-            3 => Month::March,
-            4 => Month::April,
-            5 => Month::May,
-            6 => Month::June,
-            7 => Month::July,
-            8 => Month::August,
-            9 => Month::September,
-            10 => Month::October,
-            11 => Month::November,
-            12 => Month::December,
-            _ => return None,
-        },
-        day,
-    ) {
-        Ok(ymd) => ymd,
+    // NOTE: Inlining this is cheaper than `Month::try_from(month).ok()?`
+    let month = match month {
+        1 => Month::January,
+        2 => Month::February,
+        3 => Month::March,
+        4 => Month::April,
+        5 => Month::May,
+        6 => Month::June,
+        7 => Month::July,
+        8 => Month::August,
+        9 => Month::September,
+        10 => Month::October,
+        11 => Month::November,
+        12 => Month::December,
+        _ => return None,
+    };
+
+    #[cfg(feature = "verify")]
+    unsafe {
+        assume!(-9999 <= year && year <= 9999);
+    }
+
+    let date = match Date::from_calendar_date(year, month, day) {
+        Ok(date) => date,
         Err(_) => return None,
     };
+
+    let mut date_time = PrimitiveDateTime::new(date, Time::MIDNIGHT);
 
     match b.get(offset) {
         Some(b'T' | b't' | b' ' | b'_') => {
             offset += 1; // T
         }
         // date-only, None means it's at the end of the string
-        None => return Some(PrimitiveDateTime::new(ymd, Time::MIDNIGHT)),
+        None => return Some(date_time),
         _ => return None,
     }
 
@@ -160,7 +166,7 @@ pub fn parse_iso8601(b: &[u8]) -> Option<PrimitiveDateTime> {
             while let Some(&c) = b.get(offset) {
                 let d = c.wrapping_sub(b'0');
 
-                if unlikely!(d > 9) {
+                if d > 9 {
                     break; // break on non-numeric input
                 }
 
@@ -190,14 +196,15 @@ pub fn parse_iso8601(b: &[u8]) -> Option<PrimitiveDateTime> {
         assume!(second <= 59);
 
         // if input is verified, it's impossible for these values to go over 2 digits
-        if cfg!(feature = "verify") {
+        #[cfg(feature = "verify")]
+        {
             assume!(hour <= 99);
             assume!(minute <= 99);
         }
     }
 
-    let mut date_time = match Time::from_hms_nano(hour, minute, second, nanosecond) {
-        Ok(time) => PrimitiveDateTime::new(ymd, time),
+    date_time = match Time::from_hms_nano(hour, minute, second, nanosecond) {
+        Ok(time) => date_time.replace_time(time),
         _ => return None,
     };
 
@@ -210,8 +217,8 @@ pub fn parse_iso8601(b: &[u8]) -> Option<PrimitiveDateTime> {
         Some(b'Z' | b'z') => {}
 
         // timezone, like +00:00
-        Some(c @ b'+' | c @ b'-' | c @ 0xe2) => {
-            if c == 0xe2 {
+        Some(c @ (b'+' | b'-' | 0xe2)) => {
+            if unlikely!(c == 0xe2) {
                 // check for UTF8 Unicode MINUS SIGN
                 if likely!(b.get(offset..(offset + 2)) == Some(&[0x88, 0x92])) {
                     offset += 2;
@@ -223,24 +230,30 @@ pub fn parse_iso8601(b: &[u8]) -> Option<PrimitiveDateTime> {
             let offset_hour = parse!(2, u8, b':') as u64;
             let offset_minute = parse!(2, u8) as u64;
 
-            let mut offset_seconds = (60 * 60 * offset_hour + offset_minute * 60) as i64;
+            let offset = Duration::seconds((60 * 60 * offset_hour + offset_minute * 60) as i64);
 
-            // NOTE: branchless conditional negate seems slower here
-            if c != b'+' {
-                offset_seconds = -offset_seconds;
-            }
+            // these generate function calls regardless, so avoid
+            // negating the offset and just chose which call to make
+            let checked_op: fn(PrimitiveDateTime, Duration) -> Option<PrimitiveDateTime> = match c != b'+' {
+                true => PrimitiveDateTime::checked_sub as _,
+                false => PrimitiveDateTime::checked_add as _,
+            };
 
-            date_time = date_time.checked_add(Duration::seconds(offset_seconds))?;
+            date_time = checked_op(date_time, offset)?;
         }
 
         // Parse trailing "UTC", but it does nothing, same as Z
         Some(b'U' | b'u') => match b.get(offset..(offset + 2)) {
             None => return None,
             Some(tc) => {
+                // avoid multiple branches when this loop is unrolled
+                let mut invalid = false;
                 for (c, r) in tc.iter().zip(b"tc") {
-                    if (*c | 0x20) != *r {
-                        return None;
-                    }
+                    invalid |= (*c | 0x20) != *r;
+                }
+
+                if invalid {
+                    return None;
                 }
 
                 offset += 2;
