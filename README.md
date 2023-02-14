@@ -68,3 +68,9 @@ Similarly, when deserializing, it supports either an ISO8601 string or an `i64` 
 
 * `quickcheck`
     - Enables `quickcheck`'s `Arbitrary` implementation on `Timestamp`
+
+* `worker`
+    - Enables support for `now_utc()` in Cloudflare workers
+
+* `js`
+    - Enables support for `now_utc()` in WASM using `js-sys`

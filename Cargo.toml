@@ -18,6 +18,7 @@ features = ["serde", "pg", "schema", "rusqlite", "rand", "quickcheck"]
 [features]
 std = []
 bson = []
+js = ["js-sys"]
 pg = ["postgres-types", "bytes", "std"]
 rusqlite = ["dep:rusqlite", "std"]
 rand = ["dep:rand", "time/rand"]
@@ -38,12 +39,14 @@ schemars = { optional = true, version = "0.8.8" }
 rusqlite = { optional = true, version = "0.28", default-features = false }
 rand = { optional = true, version = "0.8", default-features = false }
 quickcheck = { optional = true, version = "1.0", default-features = false }
+worker = { optional = true, version = "0.0.12" }
+js-sys = { optional = true, version = "0.3" }
 
 [dev-dependencies]
 time = { version = "0.3", features = ["macros", "parsing", "formatting"] }
 criterion = { version = "0.4", features = ["html_reports"] }
 chrono = "0.4"
-iso8601 = "0.5.1"
+iso8601 = "0.6"
 ciborium = "0.2"
 serde = { version = "1", features = ["derive"] }
 

@@ -71,6 +71,12 @@
 //!
 //! * `quickcheck`
 //!     - Enables `quickcheck`'s `Arbitrary` implementation on `Timestamp`
+//!
+//! * `worker`
+//!     - Enables support for `now_utc()` in Cloudflare workers
+//!
+//! * `js`
+//!     - Enables support for `now_utc()` in WASM using `js-sys`
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(feature = "nightly", feature(core_intrinsics))]
@@ -147,12 +153,39 @@ impl From<PrimitiveDateTime> for Timestamp {
     }
 }
 
-#[cfg(feature = "std")]
+// SystemTime::now() is not implemented on wasm32
+#[cfg(all(feature = "std", not(any(target_arch = "wasm64", target_arch = "wasm32"))))]
 impl Timestamp {
     /// Get the current time, assuming UTC
     #[inline]
     pub fn now_utc() -> Self {
         SystemTime::now().into()
+    }
+}
+
+#[cfg(all(feature = "worker", target_arch = "wasm32", not(feature = "js")))]
+impl Timestamp {
+    /// Get the current time, assuming UTC
+    #[inline]
+    pub fn now_utc() -> Self {
+        match Timestamp::UNIX_EPOCH
+            .checked_add(Duration::milliseconds(worker::Date::now().as_millis() as i64))
+        {
+            Some(ts) => ts,
+            None => unreachable!("Invalid Date::now() value"),
+        }
+    }
+}
+
+#[cfg(all(feature = "js", any(target_arch = "wasm32", target_arch = "wasm64")))]
+impl Timestamp {
+    /// Get the current time, assuming UTC
+    #[inline]
+    pub fn now_utc() -> Self {
+        match Timestamp::UNIX_EPOCH.checked_add(Duration::milliseconds(js_sys::Date::now() as i64)) {
+            Some(ts) => ts,
+            None => unreachable!("Invalid Date::now() value"),
+        }
     }
 }
 
