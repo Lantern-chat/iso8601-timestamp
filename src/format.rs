@@ -2,7 +2,7 @@ use time::{PrimitiveDateTime, UtcOffset};
 
 use crate::ts_str::{template, FormatString, IsValidFormat, TimestampStr};
 
-#[cfg(feature = "lookup")]
+#[cfg(all(feature = "lookup", not(target_arch = "wasm32")))]
 static LOOKUP: [[u8; 2]; 100] = {
     let mut table = [[0; 2]; 100];
 
@@ -59,7 +59,7 @@ where
     // Prefetch the table while datetime parts are being destructured.
     // Might cause slightly worse microbenchmark performance,
     // but may save a couple nanoseconds in real applications.
-    #[cfg(all(feature = "lookup", any(target_arch = "x86_64", target_arch = "x86")))]
+    #[cfg(all(feature = "lookup", not(target_arch = "wasm32"), any(target_arch = "x86_64", target_arch = "x86")))]
     unsafe {
         #[cfg(target_arch = "x86_64")]
         use core::arch::x86_64::{_mm_prefetch, _MM_HINT_T0};
@@ -104,14 +104,14 @@ where
                 // combine these so the compiler can optimize both operations
                 (value, d1) = (value / 100, value % 100);
 
-                #[cfg(feature = "lookup")]
+                #[cfg(all(feature = "lookup", not(target_arch = "wasm32")))]
                 {
                     let e = LOOKUP[d1 as usize];
                     len -= 1; buf[len] = e[1];
                     len -= 1; buf[len] = e[0];
                 }
 
-                #[cfg(not(feature = "lookup"))]
+                #[cfg(not(all(feature = "lookup", not(target_arch = "wasm32"))))]
                 {
                     let (a, b) = (d1 / 10, d1 % 10);
                     len -= 1; buf[len] = (b as u8) + b'0';
