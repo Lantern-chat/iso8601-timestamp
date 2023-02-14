@@ -114,8 +114,8 @@ where
                 #[cfg(not(all(feature = "lookup", not(target_arch = "wasm32"))))]
                 {
                     let (a, b) = (d1 / 10, d1 % 10);
-                    len -= 1; buf[len] = (b as u8) + b'0';
-                    len -= 1; buf[len] = (a as u8) + b'0';
+                    len -= 1; buf[len] = (b as u8) | b'0';
+                    len -= 1; buf[len] = (a as u8) | b'0';
                 }
             }
 
