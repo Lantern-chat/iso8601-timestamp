@@ -16,36 +16,24 @@ static LOOKUP: [[u8; 2]; 100] = {
     table
 };
 
-/*
-static MONTHS: [(u8, u8); 367] = {
-    let mut table = [(0, 0); 367];
+// #[inline(always)]
+// fn to_calendar_date(date: Date) -> (i32, u8, u16) {
+//     const CUMULATIVE_DAYS_IN_MONTH_COMMON_LEAP: [[u16; 12]; 2] = [
+//         [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334],
+//         [0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335],
+//     ];
 
-    let mut o = 0;
-    while o <= 367 {
-        if let Ok(date) = time::Date::from_ordinal_date(2004, o) {
-            let (_, m, d) = date.to_calendar_date();
-            table[o as usize] = (m as u8, d);
-        }
+//     let (year, ordinal) = date.to_ordinal_date();
+//     let days = CUMULATIVE_DAYS_IN_MONTH_COMMON_LEAP[time::util::is_leap_year(year) as usize];
+//     let mut month: u8 = 0;
 
-        o += 1;
-    }
+//     for d in days {
+//         month += (d < ordinal) as u8;
+//     }
 
-    table
-};
-
-#[inline(always)]
-fn get_ymd(date: time::Date) -> (i32, u8, u8) {
-    let (year, mut ordinal) = date.to_ordinal_date();
-
-    if !time::util::is_leap_year(year) && ordinal > 59 {
-        ordinal += 1;
-    }
-
-    let (m, d) = unsafe { *MONTHS.get_unchecked(ordinal as usize) };
-
-    (year, m, d)
-}
-*/
+//     let days = unsafe { *days.get_unchecked(month as usize - 1) };
+//     return (year, month, (ordinal - days) as u16);
+// }
 
 use generic_array::typenum as t;
 
@@ -72,6 +60,7 @@ where
 
     // decompose timestamp
     //let (year, month, day) = get_ymd(ts.date());
+    //let (mut year, month, day) = to_calendar_date(ts.date());
     let (mut year, month, day) = ts.to_calendar_date();
     let (hour, minute, second, nanoseconds) = ts.as_hms_nano();
 
@@ -172,25 +161,23 @@ where
 mod tests {
     use super::*;
 
-    /*
-    #[test]
-    fn test_get_ymd() {
-        let mut o = 0;
-        while o <= 367 {
-            if let Ok(date) = time::Date::from_ordinal_date(2004, o) {
-                let (y, m, d) = date.to_calendar_date();
-                assert_eq!((y, m as u8, d), get_ymd(date));
-            }
+    // #[test]
+    // fn test_get_ymd() {
+    //     let mut o = 0;
+    //     while o <= 367 {
+    //         if let Ok(date) = time::Date::from_ordinal_date(2004, o) {
+    //             let (y, m, d) = date.to_calendar_date();
+    //             assert_eq!((y, m as u8, d as u16), to_calendar_date(date));
+    //         }
 
-            if let Ok(date) = time::Date::from_ordinal_date(2005, o) {
-                let (y, m, d) = date.to_calendar_date();
-                assert_eq!((y, m as u8, d), get_ymd(date));
-            }
+    //         if let Ok(date) = time::Date::from_ordinal_date(2005, o) {
+    //             let (y, m, d) = date.to_calendar_date();
+    //             assert_eq!((y, m as u8, d as u16), to_calendar_date(date));
+    //         }
 
-            o += 1;
-        }
-    }
-    */
+    //         o += 1;
+    //     }
+    // }
 
     #[test]
     fn test_template() {
