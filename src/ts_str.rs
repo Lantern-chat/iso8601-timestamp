@@ -209,7 +209,7 @@ mod serde_impl {
         where
             S: Serializer,
         {
-            serializer.serialize_str(&*self)
+            serializer.serialize_str(self)
         }
     }
 }

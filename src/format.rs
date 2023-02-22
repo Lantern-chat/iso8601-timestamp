@@ -50,7 +50,7 @@ fn get_ymd(date: time::Date) -> (i32, u8, u8) {
 use generic_array::typenum as t;
 
 #[rustfmt::skip]
-#[allow(unused_assignments)]
+#[allow(unused_assignments, clippy::identity_op)]
 #[inline(always)]
 pub fn do_format<F: t::Bit, O: t::Bit, P: t::Unsigned>(ts: PrimitiveDateTime, offset: UtcOffset) -> TimestampStr<FormatString<F, O, P>>
 where
@@ -196,7 +196,7 @@ mod tests {
     fn test_template() {
         let now = crate::Timestamp::now_utc();
 
-        fn as_str<'a>(x: &'a [u8]) -> &'a str {
+        fn as_str(x: &[u8]) -> &str {
             std::str::from_utf8(x).unwrap()
         }
 

@@ -66,7 +66,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 
         type T = DateTime<chrono::FixedOffset>;
 
-        b.iter(|| T::parse_from_rfc3339(&ts).unwrap());
+        b.iter(|| T::parse_from_rfc3339(ts).unwrap());
     });
 
     parse_group.bench_function("iso8601_time", |b| {

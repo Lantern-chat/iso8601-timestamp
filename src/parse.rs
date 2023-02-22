@@ -75,7 +75,7 @@ impl_fp!(u8, u16, u32);
 
 #[inline]
 pub fn parse_iso8601(b: &[u8]) -> Option<PrimitiveDateTime> {
-    let negate = matches!(b.get(0), Some(b'-')) as i32;
+    let negate = matches!(b.first(), Some(b'-')) as i32;
     let mut offset = negate as usize;
 
     macro_rules! parse {
@@ -283,7 +283,7 @@ mod tests {
     #[test]
     fn test_parse_int2() {
         for i in 0..=99 {
-            let s = format!("{:02}", i);
+            let s = format!("{i:02}");
             let res = parse_2(s.as_bytes());
             assert_eq!(res, i);
         }
@@ -292,7 +292,7 @@ mod tests {
     #[test]
     fn test_parse_int4() {
         for i in 0..=9999 {
-            let s = format!("{:04}", i);
+            let s = format!("{i:04}");
             let res = parse_4(s.as_bytes());
             assert_eq!(res, i);
         }

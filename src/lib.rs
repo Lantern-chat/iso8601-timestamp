@@ -201,6 +201,7 @@ pub mod formats {
     pub type ShortMilliseconds = FormatString<t::False, t::False, t::U3>;
 
     #[test]
+    #[allow(clippy::assertions_on_constants)]
     fn test_short_ms_length() {
         // ensure the short format could fit within a smolstr/compact_str
         assert!(
@@ -237,6 +238,7 @@ impl Timestamp {
         let seconds = minutes * 60 + second as i64;
         let millis = seconds * 1000 + ms as i64;
 
+        #[allow(clippy::let_and_return)]
         millis
     }
 
