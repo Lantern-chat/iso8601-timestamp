@@ -214,7 +214,9 @@ pub fn parse_iso8601(b: &[u8]) -> Option<PrimitiveDateTime> {
 
     match tz {
         // Z
-        Some(b'Z' | b'z') => {}
+        Some(b'Z' | b'z') if likely!(offset == b.len()) => {
+            return Some(date_time);
+        }
 
         // timezone, like +00:00
         Some(c @ (b'+' | b'-' | 0xe2)) => {
@@ -227,19 +229,22 @@ pub fn parse_iso8601(b: &[u8]) -> Option<PrimitiveDateTime> {
                 }
             }
 
-            let offset_hour = parse!(2, u8, b':') as u64;
-            let offset_minute = parse!(2, u8) as u64;
+            let tz_offset_hour = parse!(2, u8, b':') as u64;
+            let tz_offset_minute = parse!(2, u8) as u64;
 
-            let offset = Duration::seconds((60 * 60 * offset_hour + offset_minute * 60) as i64);
+            if likely!(offset == b.len()) {
+                let tz_offset = Duration::seconds((60 * 60 * tz_offset_hour + tz_offset_minute * 60) as i64);
 
-            // these generate function calls regardless, so avoid
-            // negating the offset and just chose which call to make
-            let checked_op: fn(PrimitiveDateTime, Duration) -> Option<PrimitiveDateTime> = match c != b'+' {
-                true => PrimitiveDateTime::checked_sub as _,
-                false => PrimitiveDateTime::checked_add as _,
-            };
+                // these generate function calls regardless, so avoid
+                // negating the offset and just chose which call to make
+                let checked_op: fn(PrimitiveDateTime, Duration) -> Option<PrimitiveDateTime> = match c != b'+'
+                {
+                    true => PrimitiveDateTime::checked_sub as _,
+                    false => PrimitiveDateTime::checked_add as _,
+                };
 
-            date_time = checked_op(date_time, offset)?;
+                return checked_op(date_time, tz_offset);
+            }
         }
 
         // Parse trailing "UTC", but it does nothing, same as Z
@@ -256,17 +261,17 @@ pub fn parse_iso8601(b: &[u8]) -> Option<PrimitiveDateTime> {
                     return None;
                 }
 
-                offset += 2;
+                if likely!((offset + 2) == b.len()) {
+                    return Some(date_time);
+                }
             }
         },
+        None => return Some(date_time),
+
         _ => return None,
     }
 
-    if unlikely!(offset != b.len()) {
-        return None;
-    }
-
-    Some(date_time)
+    None
 }
 
 #[cfg(test)]
