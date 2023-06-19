@@ -105,7 +105,9 @@ pub use ts_str::{FormatString, TimestampStr};
 /// UTC Timestamp with nanosecond precision, millisecond-precision when serialized to serde (JSON).
 ///
 /// A `Deref`/`DerefMut` implementation is provided to gain access to the inner `PrimitiveDateTime` object.
-#[cfg_attr(feature = "diesel", derive(::diesel::FromSqlRow))]
+#[cfg_attr(feature = "diesel", derive(diesel::AsExpression, diesel::FromSqlRow))]
+#[cfg_attr(feature = "diesel", diesel(sql_type = diesel::sql_types::Timestamp))]
+#[cfg_attr(feature = "diesel-pg", diesel(sql_type = diesel::sql_types::Timestamptz))]
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct Timestamp(PrimitiveDateTime);
