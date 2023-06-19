@@ -6,7 +6,12 @@ edition = "2018"
 description = "High-performance ISO8601 Timestamp formatting and parsing"
 keywords = ["date", "time", "iso8601", "formatting", "parsing"]
 readme = "README.md"
-categories = ["date-and-time", "no-std", "parser-implementations", "value-formatting"]
+categories = [
+    "date-and-time",
+    "no-std",
+    "parser-implementations",
+    "value-formatting",
+]
 license = "MIT OR Apache-2.0"
 include = ["src/**/*", "LICENSE-*", "README.md"]
 documentation = "https://docs.rs/iso8601-timestamp"
@@ -18,6 +23,7 @@ features = ["serde", "pg", "schema", "rusqlite", "rand", "quickcheck"]
 [features]
 std = []
 bson = []
+diesel-pg = ["diesel", "diesel/postgres_backend"]
 js = ["js-sys"]
 pg = ["postgres-types", "bytes", "std"]
 rusqlite = ["dep:rusqlite", "std"]
@@ -30,9 +36,15 @@ lookup = []                                        # Use lookup table during for
 default = ["std", "serde", "lookup"]
 
 [dependencies]
+diesel = { optional = true, version = "2", default-features = false, features = [
+    "time",
+    "with-deprecated",
+] }
 serde = { optional = true, version = "1" }
 time = { version = "0.3", default-features = false, features = ["macros"] }
-postgres-types = { optional = true, version = "0.2.2", features = ["with-time-0_3"] }
+postgres-types = { optional = true, version = "0.2.2", features = [
+    "with-time-0_3",
+] }
 bytes = { optional = true, version = "1.1.0" }
 generic-array = "0.14.4"
 schemars = { optional = true, version = "0.8.8" }
