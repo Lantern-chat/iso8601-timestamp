@@ -105,6 +105,9 @@ pub use ts_str::{FormatString, TimestampStr};
 /// UTC Timestamp with nanosecond precision, millisecond-precision when serialized to serde (JSON).
 ///
 /// A `Deref`/`DerefMut` implementation is provided to gain access to the inner `PrimitiveDateTime` object.
+#[cfg_attr(feature = "diesel", derive(diesel::AsExpression, diesel::FromSqlRow))]
+#[cfg_attr(feature = "diesel", diesel(sql_type = diesel::sql_types::Timestamp))]
+#[cfg_attr(feature = "diesel-pg", diesel(sql_type = diesel::sql_types::Timestamptz))]
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct Timestamp(PrimitiveDateTime);
@@ -544,6 +547,63 @@ mod serde_impl {
             }
 
             deserializer.deserialize_any(TsVisitor)
+        }
+    }
+}
+
+#[cfg(feature = "diesel")]
+mod diesel_impl {
+    #[cfg(feature = "diesel-pg")]
+    use diesel::sql_types::Timestamptz as DbTimestamptz;
+    use diesel::{
+        backend::Backend,
+        deserialize::{self, FromSql},
+        serialize::{self, ToSql},
+        sql_types::Timestamp as DbTimestamp,
+    };
+    use time::PrimitiveDateTime;
+
+    use super::Timestamp;
+
+    impl<DB> FromSql<DbTimestamp, DB> for Timestamp
+    where
+        DB: Backend,
+        PrimitiveDateTime: FromSql<DbTimestamp, DB>,
+    {
+        fn from_sql(bytes: <DB as Backend>::RawValue<'_>) -> deserialize::Result<Self> {
+            <PrimitiveDateTime as FromSql<DbTimestamp, DB>>::from_sql(bytes).map(Timestamp::from)
+        }
+    }
+
+    #[cfg(feature = "diesel-pg")]
+    impl<DB> FromSql<DbTimestamptz, DB> for Timestamp
+    where
+        DB: Backend,
+        PrimitiveDateTime: FromSql<DbTimestamptz, DB>,
+    {
+        fn from_sql(bytes: <DB as Backend>::RawValue<'_>) -> deserialize::Result<Self> {
+            <PrimitiveDateTime as FromSql<DbTimestamptz, DB>>::from_sql(bytes).map(Timestamp::from)
+        }
+    }
+
+    impl<DB> ToSql<DbTimestamp, DB> for Timestamp
+    where
+        DB: Backend,
+        PrimitiveDateTime: ToSql<DbTimestamp, DB>,
+    {
+        fn to_sql<'b>(&'b self, out: &mut serialize::Output<'b, '_, DB>) -> serialize::Result {
+            <PrimitiveDateTime as ToSql<DbTimestamp, DB>>::to_sql(self, out)
+        }
+    }
+
+    #[cfg(feature = "diesel-pg")]
+    impl<DB> ToSql<DbTimestamptz, DB> for Timestamp
+    where
+        DB: Backend,
+        PrimitiveDateTime: ToSql<DbTimestamptz, DB>,
+    {
+        fn to_sql<'b>(&'b self, out: &mut serialize::Output<'b, '_, DB>) -> serialize::Result {
+            <PrimitiveDateTime as ToSql<DbTimestamptz, DB>>::to_sql(self, out)
         }
     }
 }
