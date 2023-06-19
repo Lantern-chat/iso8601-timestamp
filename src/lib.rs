@@ -60,6 +60,9 @@
 //! * `rusqlite`
 //!     - Enables `ToSql`/`FromSql` implementations for `Timestamp` so it can be stored/fetched from an `rusqlite`/`sqlite3` database
 //!
+//! * `diesel`/`diesel-pg`
+//!     - Enables support for diesel `ToSql`/`FromSql` and `AsExpression`
+//!
 //! * `schema`
 //!     - Enables implementation for `JsonSchema` for generating a JSON schema on the fly using `schemars`.
 //!
