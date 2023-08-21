@@ -7,17 +7,9 @@ trait FastParse: Sized {
 
 #[cfg(any(test, not(feature = "verify")))]
 #[inline(always)]
-unsafe fn copy_buf<const N: usize>(s: &[u8]) -> [u8; N] {
-    assume!(s.len() == N);
-
-    let mut buf = [0; N];
-    buf.copy_from_slice(s);
-    buf
-}
-
-#[cfg(any(test, not(feature = "verify")))]
-#[inline(always)]
 fn parse_2(s: &[u8]) -> u8 {
+    unsafe { assume!(s.len() == 2) };
+
     // NOTE: Despite doing the same as the loop below, this is a hair faster
     // (like a single clock cycle) due to instruction-level parallelism
     (s[0] & 0x0f) * 10 + (s[1] & 0x0f)
@@ -26,7 +18,13 @@ fn parse_2(s: &[u8]) -> u8 {
 #[cfg(any(test, not(feature = "verify")))]
 #[inline(always)]
 fn parse_4(s: &[u8]) -> u16 {
-    let mut digits = u32::from_le_bytes(unsafe { copy_buf::<4>(s) });
+    unsafe { assume!(s.len() == 4) };
+
+    let mut digits = u32::from_le_bytes({
+        let mut buf = [0; 4];
+        buf.copy_from_slice(s);
+        buf
+    });
 
     digits = ((digits & 0x0f000f00) >> 8) + ((digits & 0x000f000f) * 10);
     digits = ((digits & 0x00ff00ff) >> 16) + ((digits & 0x000000ff) * 100);
@@ -214,9 +212,7 @@ pub fn parse_iso8601(b: &[u8]) -> Option<PrimitiveDateTime> {
 
     match tz {
         // Z
-        Some(b'Z' | b'z') if likely!(offset == b.len()) => {
-            return Some(date_time);
-        }
+        Some(b'Z' | b'z') if likely!(offset == b.len()) => Some(date_time),
 
         // timezone, like +00:00
         Some(c @ (b'+' | b'-' | 0xe2)) => {
@@ -229,27 +225,32 @@ pub fn parse_iso8601(b: &[u8]) -> Option<PrimitiveDateTime> {
                 }
             }
 
-            let tz_offset_hour = parse!(2, u8, b':') as u64;
-            let tz_offset_minute = parse!(2, u8) as u64;
+            let tz_offset_hour = parse!(2, u8, b':') as i64;
+            let tz_offset_minute = parse!(2, u8) as i64;
 
-            if likely!(offset == b.len()) {
-                let tz_offset = Duration::seconds((60 * 60 * tz_offset_hour + tz_offset_minute * 60) as i64);
-
-                // these generate function calls regardless, so avoid
-                // negating the offset and just chose which call to make
-                let checked_op: fn(PrimitiveDateTime, Duration) -> Option<PrimitiveDateTime> = match c != b'+'
-                {
-                    true => PrimitiveDateTime::checked_sub as _,
-                    false => PrimitiveDateTime::checked_add as _,
-                };
-
-                return checked_op(date_time, tz_offset);
+            if unlikely!(offset != b.len()) {
+                return None;
             }
+
+            if tz_offset_hour == 0 && tz_offset_minute == 0 {
+                return Some(date_time);
+            }
+
+            let tz_offset = Duration::seconds(60 * 60 * tz_offset_hour + tz_offset_minute * 60);
+
+            // these generate function calls regardless, so avoid
+            // negating the offset and just chose which call to make
+            let checked_op: fn(PrimitiveDateTime, Duration) -> Option<PrimitiveDateTime> = match c != b'+' {
+                true => PrimitiveDateTime::checked_sub as _,
+                false => PrimitiveDateTime::checked_add as _,
+            };
+
+            checked_op(date_time, tz_offset)
         }
 
         // Parse trailing "UTC", but it does nothing, same as Z
         Some(b'U' | b'u') => match b.get(offset..(offset + 2)) {
-            None => return None,
+            None => None,
             Some(tc) => {
                 // avoid multiple branches when this loop is unrolled
                 let mut invalid = false;
@@ -257,21 +258,17 @@ pub fn parse_iso8601(b: &[u8]) -> Option<PrimitiveDateTime> {
                     invalid |= (*c | 0x20) != *r;
                 }
 
-                if invalid {
+                if unlikely!(invalid || (offset + 2) != b.len()) {
                     return None;
                 }
 
-                if likely!((offset + 2) == b.len()) {
-                    return Some(date_time);
-                }
+                Some(date_time)
             }
         },
-        None => return Some(date_time),
+        None => Some(date_time),
 
-        _ => return None,
+        _ => None,
     }
-
-    None
 }
 
 #[cfg(test)]
