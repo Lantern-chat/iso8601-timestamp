@@ -77,6 +77,15 @@ fn criterion_benchmark(c: &mut Criterion) {
         b.iter(|| OffsetDateTime::parse(ts, &Rfc3339).unwrap());
     });
 
+    parse_group.bench_function("iso8601_time_cst", |b| {
+        let ts = black_box(Timestamp::now_utc().format_with_offset(UtcOffset::from_hms(-6, 0, 0).unwrap()));
+        let ts = black_box(ts.as_ref());
+
+        use time::{format_description::well_known::Rfc3339, OffsetDateTime};
+
+        b.iter(|| OffsetDateTime::parse(ts, &Rfc3339).unwrap());
+    });
+
     parse_group.bench_function("iso8601_other", |b| {
         let ts = black_box("2021-10-17T02:03:01+00:00");
 
