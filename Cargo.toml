@@ -41,12 +41,12 @@ postgres-types = { optional = true, version = "0.2.2", features = ["with-time-0_
 diesel = { optional = true, version = "2", default-features = false, features = ["time", "with-deprecated"] }
 rand = { optional = true, version = "0.8", default-features = false }
 quickcheck = { optional = true, version = "1.0", default-features = false }
-worker = { optional = true, version = "0.0.16" }
+worker = { optional = true, version = "0.0.18" }
 js-sys = { optional = true, version = "0.3" }
 
 [dev-dependencies]
 time = { version = "0.3", features = ["macros", "parsing", "formatting"] }
-criterion = { version = "0.4", features = ["html_reports"] }
+criterion = { version = "0.5", features = ["html_reports"] }
 chrono = "0.4"
 iso8601 = "0.6"
 ciborium = "0.2"
