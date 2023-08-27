@@ -129,9 +129,8 @@ pub fn parse_iso8601(b: &[u8]) -> Option<PrimitiveDateTime> {
         assume!(-9999 <= year && year <= 9999);
     }
 
-    let date = match Date::from_calendar_date(year, month, day) {
-        Ok(date) => date,
-        Err(_) => return None,
+    let Ok(date) = Date::from_calendar_date(year, month, day) else {
+        return None;
     };
 
     let mut date_time = PrimitiveDateTime::new(date, Time::MIDNIGHT);

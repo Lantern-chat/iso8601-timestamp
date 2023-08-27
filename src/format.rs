@@ -54,7 +54,7 @@ unsafe fn to_calendar_date_avx2(date: Date) -> (i32, u8, u8) {
 
     let mask = _mm256_movemask_epi8(_mm256_cmpeq_epi16(days, _mm256_setzero_si256()));
     let month = mask.trailing_zeros() / 2;
-    let day = *std::mem::transmute::<_, [u16; 16]>(days).get_unchecked(month as usize - 1);
+    let day = *core::mem::transmute::<_, [u16; 16]>(days).get_unchecked(month as usize - 1);
 
     (year, month as u8, day as u8)
 }
@@ -92,7 +92,7 @@ unsafe fn to_calendar_date_sse2(date: Date) -> (i32, u8, u8) {
     let mask = (hm << 16) | lm;
     let month = mask.trailing_zeros() / 2;
 
-    let day = *std::mem::transmute::<_, [u16; 16]>([ld, hd]).get_unchecked(month as usize - 1);
+    let day = *core::mem::transmute::<_, [u16; 16]>([ld, hd]).get_unchecked(month as usize - 1);
 
     (year, month as u8, day as u8)
 }
