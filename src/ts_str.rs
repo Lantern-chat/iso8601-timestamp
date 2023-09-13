@@ -27,7 +27,7 @@ impl<F, O, P> sealed::Sealed for FormatString<F, O, P> {}
 
 #[doc(hidden)]
 pub trait IsValidFormat: sealed::Sealed {
-    type Length: ArrayLength<u8>;
+    type Length: ArrayLength;
     type Storage: AsRef<[u8]> + AsMut<[u8]> + Clone + Copy + Default;
 }
 
@@ -41,9 +41,9 @@ where
     F4<F>: Add<O5<O>>,
     P17<P>: Add<I<t::Gr<P, t::U0>>>,
     P18<P>: Add<F4O5<F, O>>,
-    StrLen<F, O, P>: ArrayLength<u8>,
+    StrLen<F, O, P>: ArrayLength,
 
-    <StrLen<F, O, P> as ArrayLength<u8>>::ArrayType: Copy,
+    <StrLen<F, O, P> as ArrayLength>::ArrayType<u8>: Copy,
 {
     type Length = StrLen<F, O, P>;
     type Storage = GenericArray<u8, Self::Length>;
