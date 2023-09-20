@@ -39,7 +39,7 @@ Similarly, when deserializing, it supports either an ISO8601 string or an `i64` 
     - Enables standard library features, such as getting the current time.
 
 * `lookup` (default)
-    - Enables use of a 200-byte lookup table during formatting. Slightly faster with a hot cache. Disabling saves 200 bytes at a 3-4% slowdown.
+    - Enables use of a 200-byte lookup table during formatting. Slightly faster with a hot cache. Disabling saves 200 bytes at a ~20% slowdown.
 
 * `serde` (default)
     - Enables serde implementations for `Timestamp` and `TimestampStr`
@@ -77,3 +77,6 @@ Similarly, when deserializing, it supports either an ISO8601 string or an `i64` 
 
 * `js`
     - Enables support for `now_utc()` in WASM using `js-sys`
+
+* `ramhorns`
+    - Implements `Content` for `Timestamp`, formatting it as a regular ISO8601 timestamp. Note that `ramhorns` is GPLv3.

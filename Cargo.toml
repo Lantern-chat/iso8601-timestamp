@@ -43,6 +43,7 @@ rand = { optional = true, version = "0.8", default-features = false }
 quickcheck = { optional = true, version = "1.0", default-features = false }
 worker = { optional = true, version = "0.0.18" }
 js-sys = { optional = true, version = "0.3" }
+ramhorns = { optional = true, version = "0.14" }
 
 [dev-dependencies]
 time = { version = "0.3", features = ["macros", "parsing", "formatting"] }

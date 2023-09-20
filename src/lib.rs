@@ -42,7 +42,7 @@
 //!     - Enables standard library features, such as getting the current time.
 //!
 //! * `lookup` (default)
-//!     - Enables use of a 200-byte lookup table during formatting. Slightly faster with a hot cache. Disabling saves 200 bytes at a 3-4% slowdown.
+//!     - Enables use of a 200-byte lookup table during formatting. Slightly faster with a hot cache. Disabling saves 200 bytes at a ~20% slowdown.
 //!
 //! * `serde` (default)
 //!     - Enables serde implementations for `Timestamp` and `TimestampStr`
@@ -80,6 +80,9 @@
 //!
 //! * `js`
 //!     - Enables support for `now_utc()` in WASM using `js-sys`
+//!
+//! * `ramhorns`
+//!     - Implements `Content` for `Timestamp`, formatting it as a regular ISO8601 timestamp. Note that `ramhorns` is GPLv3.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(feature = "nightly", feature(core_intrinsics))]
@@ -754,6 +757,25 @@ mod quickcheck_impl {
                     .shrink()
                     .map(|(d, t)| Timestamp(time::PrimitiveDateTime::new(d, t))),
             )
+        }
+    }
+}
+
+#[cfg(feature = "ramhorns")]
+mod ramhorns_impl {
+    use super::{formats::FullMilliseconds, ts_str::IsValidFormat, Timestamp};
+
+    use ramhorns::{encoding::Encoder, Content};
+
+    impl Content for Timestamp {
+        fn capacity_hint(&self, _tpl: &ramhorns::Template) -> usize {
+            use generic_array::typenum::Unsigned;
+
+            <FullMilliseconds as IsValidFormat>::Length::USIZE
+        }
+
+        fn render_escaped<E: Encoder>(&self, encoder: &mut E) -> Result<(), E::Error> {
+            encoder.write_unescaped(&self.format())
         }
     }
 }
