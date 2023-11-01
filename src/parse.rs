@@ -217,7 +217,7 @@ pub fn parse_iso8601(b: &[u8]) -> Option<PrimitiveDateTime> {
         Some(c @ (b'+' | b'-' | 0xe2)) => {
             if unlikely!(c == 0xe2) {
                 // check for UTF8 Unicode MINUS SIGN
-                if likely!(b.get(offset..(offset + 2)) == Some(&[0x88, 0x92])) {
+                if likely!(b.get(offset..(offset + 2)) == Some(&[0x88u8, 0x92u8] as &[u8])) {
                     offset += 2;
                 } else {
                     return None;

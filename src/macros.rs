@@ -50,3 +50,13 @@ macro_rules! unlikely {
 macro_rules! assume {
     ($e:expr) => { $crate::macros::assume($e) }
 }
+
+#[allow(unused_macros)]
+macro_rules! import_intrinsics {
+    (x86::{$($intr:ident),*}) => {
+        #[cfg(target_arch = "x86_64")]
+        use core::arch::x86_64::{$($intr),*};
+        #[cfg(target_arch = "x86")]
+        use core::arch::x86::{$($intr),*};
+    };
+}

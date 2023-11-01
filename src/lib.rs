@@ -86,11 +86,14 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(feature = "nightly", feature(core_intrinsics))]
+#![warn(missing_docs)]
 
 use core::ops::{AddAssign, Deref, DerefMut, SubAssign};
 
 #[cfg(feature = "std")]
 use std::time::SystemTime;
+
+pub extern crate time;
 
 pub use time::{Duration, UtcOffset};
 use time::{OffsetDateTime, PrimitiveDateTime};
@@ -102,6 +105,7 @@ use typenum as t;
 mod macros;
 
 mod format;
+mod impls;
 mod parse;
 mod ts_str;
 
@@ -140,8 +144,8 @@ impl fmt::Display for Timestamp {
 impl From<SystemTime> for Timestamp {
     fn from(ts: SystemTime) -> Self {
         Timestamp(match ts.duration_since(SystemTime::UNIX_EPOCH) {
-            Ok(dur) => Self::PRIMITIVE_UNIX_EPOCH + dur,
-            Err(err) => Self::PRIMITIVE_UNIX_EPOCH - err.duration(),
+            Ok(dur) => *Self::UNIX_EPOCH + dur,
+            Err(err) => *Self::UNIX_EPOCH - err.duration(),
         })
     }
 }
@@ -198,43 +202,79 @@ impl Timestamp {
     }
 }
 
+/// Preconfigured formats
 pub mod formats {
     use super::*;
 
+    /// `2023-03-24T07:05:59.005Z`
     pub type FullMilliseconds = FormatString<t::True, t::False, t::U3>;
+    /// `2023-03-24T07:05:59.005000Z`
     pub type FullMicroseconds = FormatString<t::True, t::False, t::U6>;
+    /// `2023-03-24T07:05:59.005432101Z`
     pub type FullNanoseconds = FormatString<t::True, t::False, t::U9>;
 
+    /// `2023-03-24T07:05:59.005+05:00`
     pub type FullMillisecondsOffset = FormatString<t::True, t::True, t::U3>;
 
+    /// `20230324T070559.005Z`
     pub type ShortMilliseconds = FormatString<t::False, t::False, t::U3>;
 
     #[test]
     #[allow(clippy::assertions_on_constants)]
     fn test_short_ms_length() {
         // ensure the short format could fit within a smolstr/compact_str
-        assert!(
-            <<ShortMilliseconds as crate::ts_str::IsValidFormat>::Length as super::t::Unsigned>::USIZE <= 22
+        assert_eq!(
+            <<ShortMilliseconds as crate::ts_str::IsValidFormat>::Length as super::t::Unsigned>::USIZE,
+            "+20230324T070559.005Z".len()
         );
+
+        assert!("+20230324T070559.005Z".len() <= 23);
     }
 }
 
+/// Construct a [`Timestamp`] with a statically known value.
+///
+/// The resulting expression can be used in `const` or `static` declarations.
+///
+/// See [`time::macros::datetime`](time::macros) for more information.
+///
+/// The variation presented here does not support timezone offsets.
+#[macro_export]
+macro_rules! datetime {
+    ($($tt:tt)*) => {
+        $crate::Timestamp::from_primitive_datetime(time::macros::datetime!($($tt)*))
+    };
+}
+
 impl Timestamp {
-    const PRIMITIVE_UNIX_EPOCH: PrimitiveDateTime = time::macros::datetime!(1970 - 01 - 01 00:00);
-
     /// Unix Epoch -- 1970-01-01 Midnight
-    pub const UNIX_EPOCH: Self = Timestamp(Self::PRIMITIVE_UNIX_EPOCH);
+    pub const UNIX_EPOCH: Self = datetime!(1970 - 01 - 01 00:00);
 
+    /// Constructs a [`Timestamp`] from a [`PrimitiveDateTime`]
+    #[inline(always)]
+    pub const fn from_primitive_datetime(dt: PrimitiveDateTime) -> Self {
+        Timestamp(dt)
+    }
+
+    /// # Deprecated
+    ///
+    /// Use `Timestamp::UNIX_EPOCH.checked_add(Duration::seconds(seconds))`
     #[deprecated = "Use `Timestamp::UNIX_EPOCH.checked_add(Duration::seconds(seconds))`"]
     pub fn from_unix_timestamp(seconds: i64) -> Self {
         Self::UNIX_EPOCH + time::Duration::seconds(seconds)
     }
 
+    /// # Deprecated
+    ///
+    /// Use `Timestamp::UNIX_EPOCH.checked_add(Duration::milliseconds(milliseconds))`
     #[deprecated = "Use `Timestamp::UNIX_EPOCH.checked_add(Duration::milliseconds(milliseconds))`"]
     pub fn from_unix_timestamp_ms(milliseconds: i64) -> Self {
         Self::UNIX_EPOCH + time::Duration::milliseconds(milliseconds)
     }
 
+    /// # Deprecated
+    ///
+    /// Use `self.duration_since(Timestamp::UNIX_EPOCH).whole_milliseconds()`
     #[deprecated = "Use `self.duration_since(Timestamp::UNIX_EPOCH).whole_milliseconds()`"]
     pub fn to_unix_timestamp_ms(self) -> i64 {
         const UNIX_EPOCH_JULIAN_DAY: i64 = time::macros::date!(1970 - 01 - 01).to_julian_day() as i64;
@@ -257,6 +297,7 @@ impl Timestamp {
         self.0 - earlier.0
     }
 
+    /// Formats the timestamp given the provided formatting parameters
     pub fn format_raw<F: t::Bit, O: t::Bit, P: t::Unsigned>(
         &self,
         offset: UtcOffset,
@@ -267,6 +308,7 @@ impl Timestamp {
         format::do_format(self.0, offset)
     }
 
+    /// Formats a full timestamp without offset, using the given subsecond precision level.
     #[inline(always)]
     pub fn format_with_precision<P: t::Unsigned>(&self) -> TimestampStr<FormatString<t::True, t::False, P>>
     where
@@ -306,6 +348,7 @@ impl Timestamp {
         self.format_raw(offset)
     }
 
+    /// Formats a full timestamp with timezone offset, and the provided level of subsecond precision.
     #[inline(always)]
     pub fn format_with_offset_and_precision<P: t::Unsigned>(
         &self,
