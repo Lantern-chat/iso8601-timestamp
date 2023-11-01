@@ -779,3 +779,40 @@ mod ramhorns_impl {
         }
     }
 }
+
+#[cfg(feature = "rkyv")]
+mod rkyv_impl {
+    use super::{Duration, Timestamp};
+
+    use rkyv::{Archive, Archived, Deserialize, Fallible, Serialize};
+
+    impl Archive for Timestamp {
+        type Archived = i64;
+        type Resolver = ();
+
+        unsafe fn resolve(&self, _pos: usize, _resolver: Self::Resolver, out: *mut Self::Archived) {
+            out.write(self.duration_since(Timestamp::UNIX_EPOCH).whole_milliseconds() as i64)
+        }
+    }
+
+    impl<S> Serialize<S> for Timestamp
+    where
+        S: Fallible + ?Sized,
+    {
+        #[inline]
+        fn serialize(&self, _serializer: &mut S) -> Result<Self::Resolver, S::Error> {
+            Ok(())
+        }
+    }
+
+    impl<D> Deserialize<Timestamp, D> for Archived<Timestamp>
+    where
+        D: Fallible + ?Sized,
+    {
+        fn deserialize(&self, _deserializer: &mut D) -> Result<Timestamp, <D as Fallible>::Error> {
+            Ok(Timestamp::UNIX_EPOCH
+                .checked_add(Duration::milliseconds(*self))
+                .unwrap_or(Timestamp::UNIX_EPOCH))
+        }
+    }
+}
