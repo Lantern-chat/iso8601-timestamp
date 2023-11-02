@@ -44,6 +44,9 @@ Similarly, when deserializing, it supports either an ISO8601 string or an `i64` 
 * `serde` (default)
     - Enables serde implementations for `Timestamp` and `TimestampStr`
 
+* `rkyv`
+    - Enables `rkyv` archive support for `Timestamp`, serializing it as a 64-bit signed unix offset in milliseconds.
+
 * `verify`
     - Verifies numeric inputs when parsing and fails when non-numeric input is found.
     - When disabled, parsing ignores invalid input, possibly giving garbage timestamps.

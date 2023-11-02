@@ -47,6 +47,9 @@
 //! * `serde` (default)
 //!     - Enables serde implementations for `Timestamp` and `TimestampStr`
 //!
+//! * `rkyv`
+//!     - Enables `rkyv` archive support for `Timestamp`, serializing it as a 64-bit signed unix offset in milliseconds.
+//!
 //! * `verify`
 //!     - Verifies numeric inputs when parsing and fails when non-numeric input is found.
 //!     - When disabled, parsing ignores invalid input, possibly giving garbage timestamps.
@@ -823,18 +826,26 @@ mod ramhorns_impl {
     }
 }
 
+/// `rkyv`-ed Timestamp as a 64-bit signed millisecond offset from the UNIX epoch.
+#[cfg(feature = "rkyv")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(transparent)]
+pub struct ArchivedTimestamp(pub i64);
+
 #[cfg(feature = "rkyv")]
 mod rkyv_impl {
-    use super::{Duration, Timestamp};
+    use super::{ArchivedTimestamp, Duration, Timestamp};
 
     use rkyv::{Archive, Archived, Deserialize, Fallible, Serialize};
 
     impl Archive for Timestamp {
-        type Archived = i64;
+        type Archived = ArchivedTimestamp;
         type Resolver = ();
 
         unsafe fn resolve(&self, _pos: usize, _resolver: Self::Resolver, out: *mut Self::Archived) {
-            out.write(self.duration_since(Timestamp::UNIX_EPOCH).whole_milliseconds() as i64)
+            out.write(ArchivedTimestamp(
+                self.duration_since(Timestamp::UNIX_EPOCH).whole_milliseconds() as i64,
+            ))
         }
     }
 
@@ -854,7 +865,7 @@ mod rkyv_impl {
     {
         fn deserialize(&self, _deserializer: &mut D) -> Result<Timestamp, <D as Fallible>::Error> {
             Ok(Timestamp::UNIX_EPOCH
-                .checked_add(Duration::milliseconds(*self))
+                .checked_add(Duration::milliseconds(self.0))
                 .unwrap_or(Timestamp::UNIX_EPOCH))
         }
     }
