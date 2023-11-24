@@ -36,7 +36,7 @@ time = { version = "0.3", default-features = false, features = ["macros"] }
 bytes = { optional = true, version = "1.1.0" }
 generic-array = "1.0.0"
 schemars = { optional = true, version = "0.8.8" }
-rusqlite = { optional = true, version = "0.29", default-features = false }
+rusqlite = { optional = true, version = "0.30", default-features = false }
 postgres-types = { optional = true, version = "0.2.2", features = ["with-time-0_3"] }
 diesel = { optional = true, version = "2", default-features = false, features = ["time", "with-deprecated"] }
 rand = { optional = true, version = "0.8", default-features = false }
