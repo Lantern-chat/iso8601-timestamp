@@ -836,7 +836,16 @@ pub struct ArchivedTimestamp(pub i64);
 mod rkyv_impl {
     use super::{ArchivedTimestamp, Duration, Timestamp};
 
-    use rkyv::{Archive, Archived, Deserialize, Fallible, Serialize};
+    use rkyv::{Archive, Archived, CheckBytes, Deserialize, Fallible, Serialize};
+
+    impl<C: ?Sized> CheckBytes<C> for ArchivedTimestamp {
+        type Error = <i64 as CheckBytes<C>>::Error;
+
+        #[inline]
+        unsafe fn check_bytes<'a>(value: *const Self, _context: &mut C) -> Result<&'a Self, Self::Error> {
+            Ok(&*value)
+        }
+    }
 
     impl Archive for Timestamp {
         type Archived = ArchivedTimestamp;

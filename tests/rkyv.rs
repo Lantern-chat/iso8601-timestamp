@@ -20,7 +20,7 @@ fn test_rkyv() {
     let buf = ser.into_serializer().into_inner();
     let archived_value = check_archived_root::<Timestamp>(&buf).unwrap();
 
-    println!("{}", archived_value);
+    println!("{:?}", archived_value);
 
     let de = archived_value.deserialize(&mut Infallible).unwrap();
 

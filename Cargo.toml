@@ -44,7 +44,7 @@ quickcheck = { optional = true, version = "1.0", default-features = false }
 worker = { optional = true, version = "0.0.18" }
 js-sys = { optional = true, version = "0.3" }
 ramhorns = { optional = true, version = "0.14" }
-rkyv = { optional = true, version = "0.7" }
+rkyv = { optional = true, version = "0.7", default-features = false, features = ["validation"] }
 
 [dev-dependencies]
 time = { version = "0.3", features = ["macros", "parsing", "formatting"] }
@@ -53,7 +53,7 @@ chrono = "0.4"
 iso8601 = "0.6"
 ciborium = "0.2"
 serde = { version = "1", features = ["derive"] }
-rkyv = { version = "0.7", features = ["validation"] }
+rkyv = { version = "0.7", default-features = true }
 
 [[bench]]
 name = "timestamp"
