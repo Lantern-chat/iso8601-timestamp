@@ -240,8 +240,8 @@ pub fn parse_iso8601(b: &[u8]) -> Option<PrimitiveDateTime> {
             // these generate function calls regardless, so avoid
             // negating the offset and just chose which call to make
             let checked_op: fn(PrimitiveDateTime, Duration) -> Option<PrimitiveDateTime> = match c != b'+' {
-                true => PrimitiveDateTime::checked_sub as _,
-                false => PrimitiveDateTime::checked_add as _,
+                true => PrimitiveDateTime::checked_add as _,
+                false => PrimitiveDateTime::checked_sub as _,
             };
 
             checked_op(date_time, tz_offset)

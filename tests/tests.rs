@@ -118,6 +118,22 @@ fn test_offset() {
     let formatted = ts.format_with_offset(o);
 
     assert_eq!("2014-04-12T16:00:00.000-04:30", &*formatted);
+
+    let ts = Timestamp::parse("2011-06-17T18:30+04:00").unwrap();
+
+    assert_eq!(ts, Timestamp::parse("2011-06-17T14:30:00.000Z").unwrap());
+    assert_eq!(
+        ts,
+        Timestamp::from(time::macros::datetime!(2011-06-17 18:30+04:00))
+    );
+    assert_eq!(
+        Timestamp::parse("2011-06-17T18:30-04:00").unwrap(),
+        Timestamp::from(time::macros::datetime!(2011-06-17 18:30-04:00))
+    );
+    assert_eq!(
+        Timestamp::parse("2000-01-01T00:00:00+11:00").unwrap(),
+        Timestamp::from(time::macros::datetime!(2000-01-01 00:00:00+11:00))
+    );
 }
 
 #[rustfmt::skip]
@@ -159,7 +175,7 @@ fn test_all_formats() {
     test_cfg!(t::False, t::False, t::U9, UtcOffset::UTC, "20140412T160000.000000000Z");
 
     let offset = UtcOffset::from_hms(15, 30, 0).unwrap();
-    ts2 = Timestamp::from(ts.assume_offset(-offset));
+    ts2 = Timestamp::from(ts.assume_offset(offset));
 
     test_cfg!(t::True, t::True, t::U0, offset, "2014-04-12T16:00:00+15:30");
     test_cfg!(t::True, t::True, t::U1, offset, "2014-04-12T16:00:00.0+15:30");
