@@ -1,3 +1,5 @@
+use std::time::SystemTime;
+
 use iso8601_timestamp::Timestamp;
 use time::UtcOffset;
 
@@ -106,6 +108,15 @@ fn test_invalid() {
     let parsed = Timestamp::parse("-868686868");
 
     assert!(parsed.is_none());
+}
+
+#[test]
+fn test_roundtrip_std() {
+    let now = SystemTime::now();
+    let ts = Timestamp::from(now);
+    let n2 = SystemTime::from(ts);
+
+    assert_eq!(now, n2);
 }
 
 #[test]

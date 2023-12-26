@@ -153,6 +153,13 @@ impl From<SystemTime> for Timestamp {
     }
 }
 
+#[cfg(feature = "std")]
+impl From<Timestamp> for SystemTime {
+    fn from(ts: Timestamp) -> Self {
+        SystemTime::UNIX_EPOCH + ts.duration_since(Timestamp::UNIX_EPOCH)
+    }
+}
+
 impl From<OffsetDateTime> for Timestamp {
     fn from(ts: OffsetDateTime) -> Self {
         let utc_datetime = ts.to_offset(UtcOffset::UTC);
