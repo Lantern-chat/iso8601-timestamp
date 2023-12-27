@@ -180,9 +180,14 @@ impl From<PrimitiveDateTime> for Timestamp {
 #[cfg(all(feature = "std", not(any(target_arch = "wasm64", target_arch = "wasm32"))))]
 impl Timestamp {
     /// Get the current time, assuming UTC
+    ///
+    /// This will panic if the System Time is before the Unix Epoch.
     #[inline]
     pub fn now_utc() -> Self {
-        SystemTime::now().into()
+        Timestamp(match SystemTime::UNIX_EPOCH.elapsed() {
+            Ok(dur) => *Self::UNIX_EPOCH + dur,
+            Err(_) => panic!("Invalid SystemTime::now() value"),
+        })
     }
 }
 
