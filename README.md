@@ -1,6 +1,10 @@
 ISO8601 Timestamp
 =================
 
+[![crates.io](https://img.shields.io/crates/v/iso8601-timestamp.svg)](https://crates.io/crates/iso8601-timestamp)
+[![Documentation](https://docs.rs/iso8601-timestamp/badge.svg)](https://docs.rs/iso8601-timestamp)
+[![MIT/Apache-2 licensed](https://img.shields.io/crates/l/iso8601-timestamp.svg)](./LICENSE-Apache)
+
 This crate provides high-performance formatting and parsing routines for ISO8601 timestamps, primarily focused on UTC values but with support for parsing (and automatically applying) UTC Offsets.
 
 The primary purpose of this is to keep the lightweight representation of timestamps within data structures, and only formatting it to a string when needed via Serde.
