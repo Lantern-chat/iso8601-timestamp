@@ -47,6 +47,9 @@
 //! * `serde` (default)
 //!     - Enables serde implementations for `Timestamp` and `TimestampStr`
 //!
+//! <details>
+//! <summary><h3><u><a>Click expand for more Cargo features</a></u></h3></summary>
+//!
 //! * `rkyv`
 //!     - Enables `rkyv` archive support for `Timestamp`, serializing it as a 64-bit signed unix offset in milliseconds.
 //!
@@ -86,6 +89,12 @@
 //!
 //! * `ramhorns`
 //!     - Implements `Content` for `Timestamp`, formatting it as a regular ISO8601 timestamp. Note that `ramhorns` is GPLv3.
+//!
+//! * `uniffi`
+//!     - Implements `uniffi_core::FfiConverter` and friends for `Timestamp`, allowing it to be used identically to `SystemTime`. This is more efficient than converting to `SystemTime` and then serializing.
+//!     - Note that uniffi has a bug that prevents the single second before the Unix Epoch from being represented. `Timestamp`'s implementation matches this.
+//!
+//! </details>
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(feature = "nightly", feature(core_intrinsics))]
@@ -130,9 +139,7 @@ use core::fmt;
 impl fmt::Debug for Timestamp {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("Timestamp")
-            .field(&self.format_nanoseconds())
-            .finish()
+        f.debug_tuple("Timestamp").field(&self.format_nanoseconds()).finish()
     }
 }
 
@@ -196,9 +203,7 @@ impl Timestamp {
     /// Get the current time, assuming UTC
     #[inline]
     pub fn now_utc() -> Self {
-        match Timestamp::UNIX_EPOCH
-            .checked_add(Duration::milliseconds(worker::Date::now().as_millis() as i64))
-        {
+        match Timestamp::UNIX_EPOCH.checked_add(Duration::milliseconds(worker::Date::now().as_millis() as i64)) {
             Some(ts) => ts,
             None => unreachable!("Invalid Date::now() value"),
         }
@@ -811,9 +816,7 @@ mod quickcheck_impl {
 
         fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
             Box::new(
-                (self.date(), self.time())
-                    .shrink()
-                    .map(|(d, t)| Timestamp(time::PrimitiveDateTime::new(d, t))),
+                (self.date(), self.time()).shrink().map(|(d, t)| Timestamp(time::PrimitiveDateTime::new(d, t))),
             )
         }
     }
@@ -885,9 +888,103 @@ mod rkyv_impl {
         D: Fallible + ?Sized,
     {
         fn deserialize(&self, _deserializer: &mut D) -> Result<Timestamp, <D as Fallible>::Error> {
-            Ok(Timestamp::UNIX_EPOCH
-                .checked_add(Duration::milliseconds(self.0))
-                .unwrap_or(Timestamp::UNIX_EPOCH))
+            Ok(Timestamp::UNIX_EPOCH.checked_add(Duration::milliseconds(self.0)).unwrap_or(Timestamp::UNIX_EPOCH))
+        }
+    }
+}
+
+#[cfg(all(feature = "uniffi", test))]
+uniffi::setup_scaffolding!();
+
+#[cfg(feature = "uniffi")]
+mod uniffi_core_impl {
+    use super::*;
+
+    use uniffi_core::{
+        deps::bytes::{Buf, BufMut},
+        metadata, FfiConverter, MetadataBuffer,
+    };
+
+    uniffi_core::derive_ffi_traits!(blanket Timestamp);
+
+    unsafe impl<UT> FfiConverter<UT> for Timestamp {
+        uniffi_core::ffi_converter_rust_buffer_lift_and_lower!(UT);
+
+        fn write(obj: Self, buf: &mut Vec<u8>) {
+            let u = obj.duration_since(Timestamp::UNIX_EPOCH);
+
+            // NOTE: There is a bug in uniffi's SystemTime implementation where the 1 second before the Unix Epoch
+            // is unrepresentable. time::Duration allows negative durations, but both components are in the same direction
+            // so we can match SystemTime's format, including the uniffi bug, by ignoring the nanosecond offset.
+            buf.put_i64(u.whole_seconds());
+            buf.put_u32(u.subsec_nanoseconds().unsigned_abs());
+        }
+
+        fn try_read(buf: &mut &[u8]) -> uniffi_core::Result<Self> {
+            uniffi_core::check_remaining(buf, 12)?;
+
+            let seconds = buf.get_i64(); // rederive nanosecond direction from seconds sign
+            let nanos = buf.get_u32() as i32 * if seconds < 0 { -1 } else { 1 };
+
+            Ok(Timestamp::UNIX_EPOCH + Duration::new(seconds, nanos))
+        }
+
+        const TYPE_ID_META: MetadataBuffer = MetadataBuffer::from_code(metadata::codes::TYPE_SYSTEM_TIME);
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[derive(uniffi::Object)]
+        pub struct TestObject {
+            pub ts: Timestamp,
+        }
+
+        #[derive(uniffi::Record)]
+        pub struct TestRecord {
+            pub ts: Timestamp,
+        }
+
+        #[test]
+        fn test_uniffi() {
+            fn test_uniffi_inner(ts: Timestamp, try_std: bool) {
+                let mut buf = Vec::new();
+                <Timestamp as FfiConverter<()>>::write(ts, &mut buf);
+                <SystemTime as FfiConverter<()>>::write(SystemTime::from(ts), &mut buf);
+
+                assert_eq!(ts, <Timestamp as FfiConverter<()>>::try_read(&mut &buf[0..12]).unwrap());
+
+                if try_std {
+                    assert_eq!(
+                        ts,
+                        <Timestamp as FfiConverter<()>>::try_read(&mut &buf[12..24]).unwrap()
+                    );
+
+                    assert_eq!(
+                        ts,
+                        Timestamp::from(<SystemTime as FfiConverter<()>>::try_read(&mut &buf[0..12]).unwrap())
+                    );
+                }
+            }
+
+            let now = Timestamp::now_utc();
+
+            test_uniffi_inner(now, true);
+
+            // something before unix epoch
+            test_uniffi_inner(Timestamp::UNIX_EPOCH - Duration::days(100 * 365), true);
+
+            // bug in uniffi can't handle small negative offsets like this for std SystemTime
+            //test_uniffi_inner(Timestamp::UNIX_EPOCH + Duration::nanoseconds(-400), false);
+
+            test_uniffi_inner(Timestamp::UNIX_EPOCH + Duration::nanoseconds(400), true);
+
+            test_uniffi_inner(Timestamp::UNIX_EPOCH + Duration::nanoseconds(-20_000_000_400), true);
+            test_uniffi_inner(
+                Timestamp::UNIX_EPOCH + Duration::nanoseconds(-20_000_000_000 + 400),
+                true,
+            );
         }
     }
 }

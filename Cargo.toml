@@ -25,6 +25,7 @@ rusqlite = ["dep:rusqlite", "std"]
 rand = ["dep:rand", "time/rand"]
 quickcheck = ["dep:quickcheck", "time/quickcheck"]
 schema = ["schemars"]
+uniffi = ["uniffi_core"]
 nightly = []
 verify = []                                        # Verify numeric input during parsing
 lookup = []                                        # Use lookup table during formatting
@@ -45,6 +46,7 @@ worker = { optional = true, version = "0.0.18" }
 js-sys = { optional = true, version = "0.3" }
 ramhorns = { optional = true, version = "0.14" }
 rkyv = { optional = true, version = "0.7", default-features = false, features = ["validation"] }
+uniffi_core = { optional = true, version = "0.25", default-features = false }
 
 [dev-dependencies]
 time = { version = "0.3", features = ["macros", "parsing", "formatting"] }
@@ -54,6 +56,7 @@ iso8601 = "0.6"
 ciborium = "0.2"
 serde = { version = "1", features = ["derive"] }
 rkyv = { version = "0.7", default-features = true }
+uniffi = "0.25"
 
 [[bench]]
 name = "timestamp"

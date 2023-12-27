@@ -83,3 +83,7 @@ Similarly, when deserializing, it supports either an ISO8601 string or an `i64` 
 
 * `ramhorns`
     - Implements `Content` for `Timestamp`, formatting it as a regular ISO8601 timestamp. Note that `ramhorns` is GPLv3.
+
+* `uniffi`
+    - Implements `uniffi_core::FfiConverter` and friends for `Timestamp`, allowing it to be used identically to `SystemTime`. This is more efficient than converting to `SystemTime` and then serializing.
+    - Note that uniffi has a bug that prevents the single second before the Unix Epoch from being represented. `Timestamp`'s implementation matches this.
