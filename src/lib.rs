@@ -838,22 +838,40 @@ mod ramhorns_impl {
     }
 }
 
-/// `rkyv`-ed Timestamp as a 64-bit signed millisecond offset from the UNIX epoch.
+/// `rkyv`-ed Timestamp as a 64-bit signed millisecond offset from the UNIX Epoch.
+///
+/// This value is Endian-agnostic, with zero overhead on little-endian archs.
 #[cfg(feature = "rkyv")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
-pub struct ArchivedTimestamp(pub i64);
+pub struct ArchivedTimestamp(rend::LittleEndian<i64>);
 
 #[cfg(feature = "rkyv")]
 mod rkyv_impl {
     use super::{ArchivedTimestamp, Duration, Timestamp};
 
+    impl ArchivedTimestamp {
+        /// Get the raw millisecond offset
+        #[inline(always)]
+        pub const fn get(self) -> i64 {
+            self.0.value()
+        }
+    }
+
+    impl From<ArchivedTimestamp> for Timestamp {
+        fn from(value: ArchivedTimestamp) -> Self {
+            Timestamp::UNIX_EPOCH
+                .checked_add(Duration::milliseconds(value.get()))
+                .unwrap_or(Timestamp::UNIX_EPOCH)
+        }
+    }
+
     use rkyv::{Archive, Archived, CheckBytes, Deserialize, Fallible, Serialize};
 
     impl<C: ?Sized> CheckBytes<C> for ArchivedTimestamp {
-        type Error = <i64 as CheckBytes<C>>::Error;
+        type Error = <rend::LittleEndian<i64> as CheckBytes<C>>::Error;
 
-        #[inline]
+        #[inline(always)]
         unsafe fn check_bytes<'a>(value: *const Self, _context: &mut C) -> Result<&'a Self, Self::Error> {
             Ok(&*value)
         }
@@ -864,9 +882,9 @@ mod rkyv_impl {
         type Resolver = ();
 
         unsafe fn resolve(&self, _pos: usize, _resolver: Self::Resolver, out: *mut Self::Archived) {
-            out.write(ArchivedTimestamp(
+            out.write(ArchivedTimestamp(rend::LittleEndian::<i64>::new(
                 self.duration_since(Timestamp::UNIX_EPOCH).whole_milliseconds() as i64,
-            ))
+            )))
         }
     }
 
@@ -874,7 +892,7 @@ mod rkyv_impl {
     where
         S: Fallible + ?Sized,
     {
-        #[inline]
+        #[inline(always)]
         fn serialize(&self, _serializer: &mut S) -> Result<Self::Resolver, S::Error> {
             Ok(())
         }
@@ -884,10 +902,9 @@ mod rkyv_impl {
     where
         D: Fallible + ?Sized,
     {
+        #[inline]
         fn deserialize(&self, _deserializer: &mut D) -> Result<Timestamp, <D as Fallible>::Error> {
-            Ok(Timestamp::UNIX_EPOCH
-                .checked_add(Duration::milliseconds(self.0))
-                .unwrap_or(Timestamp::UNIX_EPOCH))
+            Ok(Timestamp::from(*self))
         }
     }
 }

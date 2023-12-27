@@ -21,6 +21,7 @@ bson = []
 diesel-pg = ["diesel", "diesel/postgres_backend"]
 js = ["js-sys"]
 pg = ["postgres-types", "bytes", "std"]
+rkyv = ["dep:rkyv", "rend"]
 rusqlite = ["dep:rusqlite", "std"]
 rand = ["dep:rand", "time/rand"]
 quickcheck = ["dep:quickcheck", "time/quickcheck"]
@@ -45,6 +46,7 @@ worker = { optional = true, version = "0.0.18" }
 js-sys = { optional = true, version = "0.3" }
 ramhorns = { optional = true, version = "0.14" }
 rkyv = { optional = true, version = "0.7", default-features = false, features = ["validation"] }
+rend = { optional = true, version = "0.4", default-features = false }
 
 [dev-dependencies]
 time = { version = "0.3", features = ["macros", "parsing", "formatting"] }
