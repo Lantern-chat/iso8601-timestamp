@@ -16,7 +16,7 @@ repository = "https://github.com/Lantern-chat/iso8601-timestamp"
 features = ["serde", "pg", "schema", "rusqlite", "rand", "quickcheck"]
 
 [features]
-std = []
+std = ["time/std"]
 bson = []
 diesel-pg = ["diesel", "diesel/postgres_backend"]
 js = ["js-sys"]
