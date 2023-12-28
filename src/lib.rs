@@ -100,6 +100,7 @@
 #![cfg_attr(feature = "nightly", feature(core_intrinsics))]
 #![warn(missing_docs)]
 
+use core::convert::TryInto;
 use core::ops::{AddAssign, Deref, DerefMut, SubAssign};
 
 #[cfg(feature = "std")]
@@ -163,7 +164,11 @@ impl From<SystemTime> for Timestamp {
 #[cfg(feature = "std")]
 impl From<Timestamp> for SystemTime {
     fn from(ts: Timestamp) -> Self {
-        SystemTime::UNIX_EPOCH + ts.duration_since(Timestamp::UNIX_EPOCH)
+        let duration = ts.duration_since(Timestamp::UNIX_EPOCH);
+        let std_duration: std::time::Duration = duration
+            .try_into()
+            .expect("To always be able to convert between time::Duration and std::time::Duration");
+        SystemTime::UNIX_EPOCH + std_duration
     }
 }
 
