@@ -1,6 +1,6 @@
 [package]
 name = "iso8601-timestamp"
-version = "0.2.14"
+version = "0.2.15"
 authors = ["novacrazy <novacrazy@gmail.com>"]
 edition = "2018"
 description = "High-performance ISO8601 Timestamp formatting and parsing"
@@ -16,7 +16,7 @@ repository = "https://github.com/Lantern-chat/iso8601-timestamp"
 features = ["serde", "pg", "schema", "rusqlite", "rand", "quickcheck"]
 
 [features]
-std = []
+std = ["time/std"]
 bson = []
 diesel-pg = ["diesel", "diesel/postgres_backend"]
 js = ["js-sys"]
