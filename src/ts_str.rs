@@ -114,6 +114,10 @@ where
 #[repr(transparent)]
 pub struct TimestampStr<S: IsValidFormat>(pub(crate) S::Storage);
 
+impl<S: IsValidFormat> TimestampStr<S> {
+    const LEN: usize = <S::Length as super::t::Unsigned>::USIZE;
+}
+
 impl<S: IsValidFormat> AsRef<str> for TimestampStr<S> {
     #[inline]
     fn as_ref(&self) -> &str {
