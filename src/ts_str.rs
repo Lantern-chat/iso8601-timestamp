@@ -115,7 +115,8 @@ where
 pub struct TimestampStr<S: IsValidFormat>(pub(crate) S::Storage);
 
 impl<S: IsValidFormat> TimestampStr<S> {
-    const LEN: usize = <S::Length as super::t::Unsigned>::USIZE;
+    /// The length of a `TimestampStr` for the given format
+    pub const LEN: usize = <S::Length as super::t::Unsigned>::USIZE;
 }
 
 impl<S: IsValidFormat> AsRef<str> for TimestampStr<S> {
