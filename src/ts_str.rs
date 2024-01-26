@@ -109,10 +109,40 @@ where
     value
 }
 
-/// Fixed-size inline string storage that exactly fits the formatted timestamp
+/// Fixed-size inline string storage that exactly fits the formatted timestamp.
 #[derive(Clone, Copy)]
 #[repr(transparent)]
 pub struct TimestampStr<S: IsValidFormat>(pub(crate) S::Storage);
+
+impl<S: IsValidFormat> TimestampStr<S> {
+    /// The maximum length this timestamp string can be in bytes (and characters).
+    ///
+    /// If the timestamp is positive, that is after the year 0000, the formatted
+    /// string will be `MAX_LEN - 1` as it will not print the `+` sign in front.
+    ///
+    /// This value is equal to `core::mem::size_of::<TimestampStr<S>>()`,
+    /// as the internal representation of `TimestampStr` is just `[u8; MAX_LEN]`.
+    pub const MAX_LEN: usize = <S::Length as t::Unsigned>::USIZE;
+}
+
+#[cfg(test)]
+mod ts_str_tests {
+    use crate::{formats as f, IsValidFormat, TimestampStr};
+    use core::mem::size_of;
+
+    #[test]
+    fn test_ts_str_size_of() {
+        fn assert_size_of<S: IsValidFormat>() {
+            assert_eq!(size_of::<TimestampStr<S>>(), <TimestampStr<S>>::MAX_LEN);
+        }
+
+        assert_size_of::<f::FullMicroseconds>();
+        assert_size_of::<f::FullMilliseconds>();
+        assert_size_of::<f::FullMillisecondsOffset>();
+        assert_size_of::<f::FullNanoseconds>();
+        assert_size_of::<f::ShortMilliseconds>();
+    }
+}
 
 impl<S: IsValidFormat> AsRef<str> for TimestampStr<S> {
     #[inline]
@@ -140,7 +170,7 @@ use core::ops::Deref;
 impl<S: IsValidFormat> Deref for TimestampStr<S> {
     type Target = str;
 
-    #[inline]
+    #[inline(always)]
     fn deref(&self) -> &Self::Target {
         self.as_ref()
     }
@@ -149,7 +179,7 @@ impl<S: IsValidFormat> Deref for TimestampStr<S> {
 impl<S: IsValidFormat> PartialEq for TimestampStr<S> {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        self.as_ref() == other.as_ref()
+        self.0.as_ref() == other.0.as_ref()
     }
 }
 
