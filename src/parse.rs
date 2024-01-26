@@ -73,8 +73,24 @@ impl_fp!(u8, u16, u32);
 
 #[inline]
 pub fn parse_iso8601(b: &[u8]) -> Option<PrimitiveDateTime> {
-    let negate = matches!(b.first(), Some(b'-')) as i32;
-    let mut offset = negate as usize;
+    let (mut offset, negate) = match b.first().copied() {
+        Some(c @ (b'+' | b'-' | 0xe2)) => {
+            let mut offset = 1;
+
+            if unlikely!(c == 0xe2) {
+                // check for UTF8 Unicode MINUS SIGN
+                if unlikely!(b.get(offset..(offset + 2)) != Some(&[0x88u8, 0x92u8] as &[u8])) {
+                    return None;
+                }
+
+                offset += 2;
+            }
+
+            (offset, (c != b'+') as i32)
+        }
+        Some(_) => (0, 0),
+        None => return None,
+    };
 
     macro_rules! parse {
         ($len:expr, $ty:ty $(, $eat_byte:expr)?) => {loop {
@@ -217,11 +233,10 @@ pub fn parse_iso8601(b: &[u8]) -> Option<PrimitiveDateTime> {
         Some(c @ (b'+' | b'-' | 0xe2)) => {
             if unlikely!(c == 0xe2) {
                 // check for UTF8 Unicode MINUS SIGN
-                if likely!(b.get(offset..(offset + 2)) == Some(&[0x88u8, 0x92u8] as &[u8])) {
-                    offset += 2;
-                } else {
+                if unlikely!(b.get(offset..(offset + 2)) != Some(&[0x88u8, 0x92u8] as &[u8])) {
                     return None;
                 }
+                offset += 2;
             }
 
             let tz_offset_hour = parse!(2, u8, b':') as i64;
