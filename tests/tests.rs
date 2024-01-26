@@ -83,6 +83,16 @@ fn test_parse_iso8601_variations() {
 }
 
 #[test]
+fn test_parse_negative() {
+    let ts = iso8601_timestamp::datetime!(-0004-12-16 10:00 AM);
+
+    let tsf = ts.format();
+
+    assert_eq!(tsf, "-0004-12-16T10:00:00.000Z");
+    assert_eq!(Timestamp::parse("−0004-12-16T10:00:00.000Z"), Some(ts));
+}
+
+#[test]
 fn test_unix_timestamp_ms() {
     let now_ts = Timestamp::now_utc();
     let now_ot = now_ts.assume_offset(time::UtcOffset::UTC);
@@ -135,6 +145,7 @@ fn test_offset() {
     let ts = Timestamp::parse("2011-06-17T18:30+04:00").unwrap();
 
     assert_eq!(ts, Timestamp::parse("2011-06-17T14:30:00.000Z").unwrap());
+    assert_eq!(ts, Timestamp::parse("+2011-06-17T14:30:00.000Z").unwrap());
     assert_eq!(
         ts,
         Timestamp::from(time::macros::datetime!(2011-06-17 18:30+04:00))
