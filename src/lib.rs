@@ -205,7 +205,11 @@ impl Timestamp {
     }
 }
 
-#[cfg(all(feature = "js", any(target_arch = "wasm32", target_arch = "wasm64")))]
+#[cfg(all(
+    feature = "js",
+    any(target_arch = "wasm32", target_arch = "wasm64"),
+    not(feature = "worker")
+))]
 impl Timestamp {
     /// Get the current time, assuming UTC
     #[inline]

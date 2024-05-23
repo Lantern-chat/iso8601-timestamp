@@ -42,9 +42,9 @@ postgres-types = { optional = true, version = "0.2.2", features = ["with-time-0_
 diesel = { optional = true, version = "2", default-features = false, features = ["time", "with-deprecated"] }
 rand = { optional = true, version = "0.8", default-features = false }
 quickcheck = { optional = true, version = "1.0", default-features = false }
-worker = { optional = true, version = "0.0.18" }
+worker = { optional = true, version = "0.3.0" }
 js-sys = { optional = true, version = "0.3" }
-ramhorns = { optional = true, version = "0.14" }
+ramhorns = { optional = true, version = "1.0" }
 rkyv = { optional = true, version = "0.7", default-features = false, features = ["validation"] }
 rend = { optional = true, version = "0.4", default-features = false }
 
