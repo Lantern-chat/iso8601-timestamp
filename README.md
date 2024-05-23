@@ -87,3 +87,7 @@ Similarly, when deserializing, it supports either an ISO8601 string or an `i64` 
 
 * `ramhorns`
     - Implements `Content` for `Timestamp`, formatting it as a regular ISO8601 timestamp. Note that `ramhorns` is GPLv3.
+
+* `fred`
+    - Implements conversions between `Timestamp` and `RedisValue`/`RedisKey` to be used with `fred` Redis client.
+    - Values are stored as milliseconds since the Unix Epoch, and keys are stored as ISO8601 strings.

@@ -47,6 +47,7 @@ js-sys = { optional = true, version = "0.3" }
 ramhorns = { optional = true, version = "1.0" }
 rkyv = { optional = true, version = "0.7", default-features = false, features = ["validation"] }
 rend = { optional = true, version = "0.4", default-features = false }
+fred = { optional = true, version = "9.0", default-features = false }
 
 [dev-dependencies]
 time = { version = "0.3", features = ["macros", "parsing", "formatting"] }

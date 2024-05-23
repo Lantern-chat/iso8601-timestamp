@@ -86,6 +86,10 @@
 //!
 //! * `ramhorns`
 //!     - Implements `Content` for `Timestamp`, formatting it as a regular ISO8601 timestamp. Note that `ramhorns` is GPLv3.
+//!
+//! * `fred`
+//!    - Implements conversions between `Timestamp` and `RedisValue`/`RedisKey` to be used with `fred` Redis client.
+//!    - Values are stored as milliseconds since the Unix Epoch, and keys are stored as ISO8601 strings.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(feature = "nightly", feature(core_intrinsics))]
@@ -909,6 +913,57 @@ mod rkyv_impl {
         #[inline]
         fn deserialize(&self, _deserializer: &mut D) -> Result<Timestamp, <D as Fallible>::Error> {
             Ok(Timestamp::from(*self))
+        }
+    }
+}
+
+#[cfg(feature = "fred")]
+mod fred_impl {
+    use fred::{
+        error::{RedisError, RedisErrorKind},
+        types::{FromRedis, FromRedisKey, RedisKey, RedisValue},
+    };
+
+    use super::{Duration, Timestamp};
+
+    impl From<Timestamp> for RedisValue {
+        fn from(ts: Timestamp) -> Self {
+            RedisValue::Integer(ts.duration_since(Timestamp::UNIX_EPOCH).whole_milliseconds() as i64)
+        }
+    }
+
+    impl From<Timestamp> for RedisKey {
+        fn from(ts: Timestamp) -> Self {
+            RedisKey::from(&*ts.format())
+        }
+    }
+
+    impl FromRedis for Timestamp {
+        fn from_value(value: RedisValue) -> Result<Self, RedisError> {
+            match value {
+                RedisValue::String(ts) => Timestamp::parse(&ts)
+                    .ok_or_else(|| RedisError::new(RedisErrorKind::Parse, "Invalid Timestamp format")),
+                RedisValue::Bytes(ts) => match core::str::from_utf8(&ts) {
+                    Ok(ts) => Timestamp::parse(ts)
+                        .ok_or_else(|| RedisError::new(RedisErrorKind::Parse, "Invalid Timestamp format")),
+                    Err(_) => Err(RedisError::new(RedisErrorKind::Parse, "Invalid UTF-8 Timestamp")),
+                },
+                RedisValue::Integer(ts) => Timestamp::UNIX_EPOCH
+                    .checked_add(Duration::seconds(ts))
+                    .ok_or_else(|| RedisError::new(RedisErrorKind::Parse, "Timestamp out of range")),
+                _ => Err(RedisError::new(RedisErrorKind::Parse, "Invalid Timestamp type")),
+            }
+        }
+    }
+
+    impl FromRedisKey for Timestamp {
+        fn from_key(value: RedisKey) -> Result<Self, RedisError> {
+            let Ok(value) = core::str::from_utf8(value.as_bytes()) else {
+                return Err(RedisError::new(RedisErrorKind::Parse, "Invalid UTF-8 Key"));
+            };
+
+            Timestamp::parse(value)
+                .ok_or_else(|| RedisError::new(RedisErrorKind::Parse, "Invalid Timestamp format"))
         }
     }
 }
