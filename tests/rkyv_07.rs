@@ -1,8 +1,8 @@
-#![cfg(feature = "rkyv")]
+#![cfg(feature = "rkyv_07")]
 
 use iso8601_timestamp::Timestamp;
 
-use rkyv::{
+use rkyv_07::{
     check_archived_root,
     //Archive, Deserialize, Serialize,
     ser::{serializers::AllocSerializer, Serializer},

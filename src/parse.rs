@@ -8,6 +8,7 @@ trait FastParse: Sized {
 #[cfg(any(test, not(feature = "verify")))]
 #[inline(always)]
 fn parse_2(s: &[u8]) -> u8 {
+    // SAFETY: This function is only called with slices of length 2
     unsafe { assume!(s.len() == 2) };
 
     // NOTE: Despite doing the same as the loop below, this is a hair faster
@@ -18,6 +19,7 @@ fn parse_2(s: &[u8]) -> u8 {
 #[cfg(any(test, not(feature = "verify")))]
 #[inline(always)]
 fn parse_4(s: &[u8]) -> u16 {
+    // SAFETY: This function is only called with slices of length 4
     unsafe { assume!(s.len() == 4) };
 
     let mut digits = u32::from_le_bytes({
@@ -26,8 +28,8 @@ fn parse_4(s: &[u8]) -> u16 {
         buf
     });
 
-    digits = ((digits & 0x0f000f00) >> 8) + ((digits & 0x000f000f) * 10);
-    digits = ((digits & 0x00ff00ff) >> 16) + ((digits & 0x000000ff) * 100);
+    digits = ((digits & 0x0f00_0f00) >> 8) + ((digits & 0x000f_000f) * 10);
+    digits = ((digits & 0x00ff_00ff) >> 16) + ((digits & 0x0000_00ff) * 100);
 
     digits as u16
 }
@@ -204,6 +206,7 @@ pub fn parse_iso8601(b: &[u8]) -> Option<PrimitiveDateTime> {
         }
     }
 
+    // SAFETY: These values are verified to be within bounds
     unsafe {
         assume!(nanosecond <= 999_999_999);
         assume!(second <= 59);

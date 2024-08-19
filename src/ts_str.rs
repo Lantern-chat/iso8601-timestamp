@@ -103,6 +103,8 @@ where
         (false, false, 7) => w!(b"+00000000T000000.0000000Z"),
         (false, false, 8) => w!(b"+00000000T000000.00000000Z"),
         (false, false, 9) => w!(b"+00000000T000000.000000000Z"),
+
+        // SAFETY: Guaranteed by the IsValidFormat trait
         _ => unsafe { core::hint::unreachable_unchecked() },
     }
 
@@ -147,6 +149,8 @@ mod ts_str_tests {
 impl<S: IsValidFormat> AsRef<str> for TimestampStr<S> {
     #[inline]
     fn as_ref(&self) -> &str {
+        // SAFETY: String is guaranteed to be valid UTF-8,
+        // just need to offset it to avoid the + sign if positive.
         unsafe {
             // skip + sign if positive
             let bytes = self.0.as_ref();

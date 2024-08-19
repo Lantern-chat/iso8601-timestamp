@@ -14,7 +14,7 @@ pub const fn is_leap_year(year: i32) -> bool {
 unsafe fn to_calendar_date_avx2(date: Date) -> (i32, Month, u8) {
     import_intrinsics!(x86::{
         _mm256_set1_epi16, _mm256_set_epi16, _mm256_setzero_si256,
-        _mm256_cmpeq_epi16, _mm256_movemask_epi8, _mm256_subs_epu16
+        _mm256_cmpeq_epi16, _mm256_movemask_epi8, _mm256_subs_epu16, __m256i
     });
 
     let year = date.year();
@@ -29,9 +29,9 @@ unsafe fn to_calendar_date_avx2(date: Date) -> (i32, Month, u8) {
 
     let mask = _mm256_movemask_epi8(_mm256_cmpeq_epi16(days, _mm256_setzero_si256()));
     let month = mask.trailing_zeros() / 2;
-    let day = *core::mem::transmute::<_, [u16; 16]>(days).get_unchecked(month as usize - 1);
+    let day = *core::mem::transmute::<__m256i, [u16; 16]>(days).get_unchecked(month as usize - 1);
 
-    (year, core::mem::transmute(month as u8), day as u8)
+    (year, core::mem::transmute::<u8, Month>(month as u8), day as u8)
 }
 
 #[inline(always)]
@@ -39,7 +39,7 @@ unsafe fn to_calendar_date_avx2(date: Date) -> (i32, Month, u8) {
 unsafe fn to_calendar_date_sse2(date: Date) -> (i32, Month, u8) {
     import_intrinsics!(x86::{
         _mm_cmpeq_epi16, _mm_movemask_epi8, _mm_set1_epi16,
-        _mm_set_epi16, _mm_setzero_si128, _mm_subs_epu16
+        _mm_set_epi16, _mm_setzero_si128, _mm_subs_epu16, __m128i
     });
 
     let year = date.year();
@@ -67,18 +67,20 @@ unsafe fn to_calendar_date_sse2(date: Date) -> (i32, Month, u8) {
     let mask = (hm << 16) | lm;
     let month = mask.trailing_zeros() / 2;
 
-    let day = *core::mem::transmute::<_, [u16; 16]>([ld, hd]).get_unchecked(month as usize - 1);
+    let day = *core::mem::transmute::<[__m128i; 2], [u16; 16]>([ld, hd]).get_unchecked(month as usize - 1);
 
-    (year, core::mem::transmute(month as u8), day as u8)
+    (year, core::mem::transmute::<u8, Month>(month as u8), day as u8)
 }
 
 #[inline(always)]
 #[allow(unreachable_code)]
 pub(crate) fn to_calendar_date(date: Date) -> (i32, Month, u8) {
     #[cfg(target_feature = "avx2")]
+    // SAFETY: Checked for AVX2 support
     return unsafe { to_calendar_date_avx2(date) };
 
     #[cfg(target_feature = "sse2")]
+    // SAFETY: Checked for SSE2 support
     return unsafe { to_calendar_date_sse2(date) };
 
     date.to_calendar_date()
@@ -98,6 +100,7 @@ impl Timestamp {
     /// );
     /// ```
     #[inline(always)]
+    #[must_use]
     pub fn to_calendar_date(&self) -> (i32, Month, u8) {
         to_calendar_date(self.date())
     }
@@ -116,9 +119,14 @@ mod tests {
                     continue;
                 };
 
-                let avx2 = unsafe { to_calendar_date_avx2(date) };
-                let sse2 = unsafe { to_calendar_date_sse2(date) };
-                let none = date.to_calendar_date();
+                // SAFETY: Only tested on x86_64 with AVX2 and SSE2
+                let (avx2, sse2, none) = unsafe {
+                    (
+                        to_calendar_date_avx2(date),
+                        to_calendar_date_sse2(date),
+                        date.to_calendar_date(),
+                    )
+                };
 
                 assert_eq!(none, avx2);
                 assert_eq!(none, sse2);

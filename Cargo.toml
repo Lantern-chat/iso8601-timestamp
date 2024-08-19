@@ -1,6 +1,6 @@
 [package]
 name = "iso8601-timestamp"
-version = "0.2.17"
+version = "0.3.0-alpha.1"
 authors = ["novacrazy <novacrazy@gmail.com>"]
 edition = "2018"
 description = "High-performance ISO8601 Timestamp formatting and parsing"
@@ -21,12 +21,12 @@ bson = []
 diesel-pg = ["diesel", "diesel/postgres_backend"]
 js = ["js-sys"]
 pg = ["postgres-types", "bytes", "std"]
-rkyv = ["dep:rkyv", "rend"]
+rkyv_07 = ["dep:rkyv_07", "rend"]
+rkyv_08 = ["dep:rkyv_08"]
 rusqlite = ["dep:rusqlite", "std"]
 rand = ["dep:rand", "time/rand"]
 quickcheck = ["dep:quickcheck", "time/quickcheck"]
 schema = ["schemars"]
-nightly = []
 verify = []                                        # Verify numeric input during parsing
 lookup = []                                        # Use lookup table during formatting
 default = ["std", "serde", "lookup"]
@@ -37,7 +37,7 @@ time = { version = "0.3", default-features = false, features = ["macros"] }
 bytes = { optional = true, version = "1.1.0" }
 generic-array = "1.0.0"
 schemars = { optional = true, version = "0.8.8" }
-rusqlite = { optional = true, version = "0.31", default-features = false }
+rusqlite = { optional = true, version = "0.32", default-features = false }
 postgres-types = { optional = true, version = "0.2.2", features = ["with-time-0_3"] }
 diesel = { optional = true, version = "2", default-features = false, features = ["time", "with-deprecated"] }
 rand = { optional = true, version = "0.8", default-features = false }
@@ -45,7 +45,8 @@ quickcheck = { optional = true, version = "1.0", default-features = false }
 worker = { optional = true, version = "0.3.0" }
 js-sys = { optional = true, version = "0.3" }
 ramhorns = { optional = true, version = "1.0" }
-rkyv = { optional = true, version = "0.7", default-features = false, features = ["validation"] }
+rkyv_08 = { package = "rkyv", optional = true, version = "0.8.0-alpha.3", default-features = false, features = ["bytecheck"] }
+rkyv_07 = { package = "rkyv", optional = true, version = "0.7", default-features = false, features = ["validation"] }
 rend = { optional = true, version = "0.4", default-features = false }
 fred = { optional = true, version = "9.0", default-features = false }
 
@@ -56,7 +57,8 @@ chrono = "0.4"
 iso8601 = "0.6"
 ciborium = "0.2"
 serde = { version = "1", features = ["derive"] }
-rkyv = { version = "0.7", default-features = true }
+#rkyv_07 = { package = "rkyv", version = "0.7", default-features = true }
+rkyv_08 = { package = "rkyv", version = "0.8.0-alpha.3", default-features = true }
 
 [[bench]]
 name = "timestamp"

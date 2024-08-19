@@ -28,9 +28,10 @@ where
     // Might cause slightly worse microbenchmark performance,
     // but may save a couple nanoseconds in real applications.
     #[cfg(all(feature = "lookup", any(target_arch = "x86_64", target_arch = "x86")))]
+    // SAFETY: prefetching has no significant side effects nor safety concerns
     unsafe {
         import_intrinsics!(x86::{_mm_prefetch, _MM_HINT_T0});
-        _mm_prefetch::<_MM_HINT_T0>(LOOKUP.as_ptr() as _);
+        _mm_prefetch::<_MM_HINT_T0>(LOOKUP.as_ptr().cast());
     }
 
     // decompose timestamp
@@ -53,7 +54,7 @@ where
             let mut len = $len;
             let mut d1 = 0;
 
-            // tell the compiler that the max value is known
+            // SAFETY: tell the compiler that the max value is known
             unsafe { assume!(value <= $max); }
 
             // get offset stuff out of the way, freeing dependency chain for next field

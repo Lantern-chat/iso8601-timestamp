@@ -54,9 +54,6 @@
 //!     - Verifies numeric inputs when parsing and fails when non-numeric input is found.
 //!     - When disabled, parsing ignores invalid input, possibly giving garbage timestamps.
 //!
-//! * `nightly`
-//!     - Enables nightly-specific optimizations, but without it will fallback to workarounds to enable the same optimizations.
-//!
 //! * `pg`
 //!     - Enables `ToSql`/`FromSql` implementations for `Timestamp` so it can be directly stored/fetched from a PostgreSQL database using `rust-postgres`
 //!
@@ -92,8 +89,15 @@
 //!    - Values are stored as milliseconds since the Unix Epoch, and keys are stored as ISO8601 strings.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-#![cfg_attr(feature = "nightly", feature(core_intrinsics))]
-#![warn(missing_docs)]
+#![deny(
+    missing_docs,
+    clippy::missing_safety_doc,
+    clippy::undocumented_unsafe_blocks,
+    clippy::must_use_candidate,
+    clippy::perf,
+    clippy::complexity,
+    clippy::suspicious
+)]
 
 use core::ops::{AddAssign, Deref, DerefMut, SubAssign};
 
@@ -185,13 +189,17 @@ impl From<PrimitiveDateTime> for Timestamp {
 impl Timestamp {
     /// Get the current time, assuming UTC
     ///
+    /// # Panics
     /// This will panic if the System Time is before the Unix Epoch.
     #[inline]
+    #[must_use]
     pub fn now_utc() -> Self {
-        Timestamp(match SystemTime::UNIX_EPOCH.elapsed() {
-            Ok(dur) => *Self::UNIX_EPOCH + dur,
-            Err(_) => panic!("Invalid SystemTime::now() value"),
-        })
+        Timestamp(
+            *Self::UNIX_EPOCH
+                + SystemTime::UNIX_EPOCH
+                    .elapsed()
+                    .expect("SystemTime before UNIX_EPOCH"),
+        )
     }
 }
 
@@ -199,6 +207,7 @@ impl Timestamp {
 impl Timestamp {
     /// Get the current time, assuming UTC
     #[inline]
+    #[must_use]
     pub fn now_utc() -> Self {
         match Timestamp::UNIX_EPOCH
             .checked_add(Duration::milliseconds(worker::Date::now().as_millis() as i64))
@@ -217,6 +226,7 @@ impl Timestamp {
 impl Timestamp {
     /// Get the current time, assuming UTC
     #[inline]
+    #[must_use]
     pub fn now_utc() -> Self {
         match Timestamp::UNIX_EPOCH.checked_add(Duration::milliseconds(js_sys::Date::now() as i64)) {
             Some(ts) => ts,
@@ -275,52 +285,20 @@ impl Timestamp {
 
     /// Constructs a [`Timestamp`] from a [`PrimitiveDateTime`]
     #[inline(always)]
+    #[must_use]
     pub const fn from_primitive_datetime(dt: PrimitiveDateTime) -> Self {
         Timestamp(dt)
     }
 
-    /// # Deprecated
-    ///
-    /// Use `Timestamp::UNIX_EPOCH.checked_add(Duration::seconds(seconds))`
-    #[deprecated = "Use `Timestamp::UNIX_EPOCH.checked_add(Duration::seconds(seconds))`"]
-    pub fn from_unix_timestamp(seconds: i64) -> Self {
-        Self::UNIX_EPOCH + time::Duration::seconds(seconds)
-    }
-
-    /// # Deprecated
-    ///
-    /// Use `Timestamp::UNIX_EPOCH.checked_add(Duration::milliseconds(milliseconds))`
-    #[deprecated = "Use `Timestamp::UNIX_EPOCH.checked_add(Duration::milliseconds(milliseconds))`"]
-    pub fn from_unix_timestamp_ms(milliseconds: i64) -> Self {
-        Self::UNIX_EPOCH + time::Duration::milliseconds(milliseconds)
-    }
-
-    /// # Deprecated
-    ///
-    /// Use `self.duration_since(Timestamp::UNIX_EPOCH).whole_milliseconds()`
-    #[deprecated = "Use `self.duration_since(Timestamp::UNIX_EPOCH).whole_milliseconds()`"]
-    pub fn to_unix_timestamp_ms(self) -> i64 {
-        const UNIX_EPOCH_JULIAN_DAY: i64 = time::macros::date!(1970 - 01 - 01).to_julian_day() as i64;
-
-        let day = self.to_julian_day() as i64 - UNIX_EPOCH_JULIAN_DAY;
-        let (hour, minute, second, ms) = self.as_hms_milli();
-
-        let hours = day * 24 + hour as i64;
-        let minutes = hours * 60 + minute as i64;
-        let seconds = minutes * 60 + second as i64;
-        let millis = seconds * 1000 + ms as i64;
-
-        #[allow(clippy::let_and_return)]
-        millis
-    }
-
     /// Returns the amount of time elapsed from an earlier point in time.
     #[inline]
+    #[must_use]
     pub fn duration_since(self, earlier: Self) -> Duration {
         self.0 - earlier.0
     }
 
     /// Formats the timestamp given the provided formatting parameters
+    #[must_use]
     pub fn format_raw<F: t::Bit, O: t::Bit, P: t::Unsigned>(
         &self,
         offset: UtcOffset,
@@ -333,6 +311,7 @@ impl Timestamp {
 
     /// Formats a full timestamp without offset, using the given subsecond precision level.
     #[inline(always)]
+    #[must_use]
     pub fn format_with_precision<P: t::Unsigned>(&self) -> TimestampStr<FormatString<t::True, t::False, P>>
     where
         FormatString<t::True, t::False, P>: IsValidFormat,
@@ -342,24 +321,28 @@ impl Timestamp {
 
     /// Format timestamp to ISO8601 with full punctuation, to millisecond precision.
     #[inline(always)]
+    #[must_use]
     pub fn format(&self) -> TimestampStr<formats::FullMilliseconds> {
         self.format_with_precision()
     }
 
     /// Format timestamp to ISO8601 with extended precision to nanoseconds.
     #[inline(always)]
+    #[must_use]
     pub fn format_nanoseconds(&self) -> TimestampStr<formats::FullNanoseconds> {
         self.format_with_precision()
     }
 
     /// Format timestamp to ISO8601 with extended precision to microseconds.
     #[inline(always)]
+    #[must_use]
     pub fn format_microseconds(&self) -> TimestampStr<formats::FullMicroseconds> {
         self.format_with_precision()
     }
 
     /// Format timestamp to ISO8601 without most punctuation, to millisecond precision.
     #[inline(always)]
+    #[must_use]
     pub fn format_short(&self) -> TimestampStr<formats::ShortMilliseconds> {
         self.format_raw(UtcOffset::UTC)
     }
@@ -367,12 +350,14 @@ impl Timestamp {
     /// Format timestamp to ISO8601 with arbitrary UTC offset. Any offset is formatted as `+HH:MM`,
     /// and no timezone conversions are done. It is interpreted literally.
     #[inline(always)]
+    #[must_use]
     pub fn format_with_offset(&self, offset: UtcOffset) -> TimestampStr<formats::FullMillisecondsOffset> {
         self.format_raw(offset)
     }
 
     /// Formats a full timestamp with timezone offset, and the provided level of subsecond precision.
     #[inline(always)]
+    #[must_use]
     pub fn format_with_offset_and_precision<P: t::Unsigned>(
         &self,
         offset: UtcOffset,
@@ -384,13 +369,15 @@ impl Timestamp {
     }
 
     /// Parse to UTC timestamp from any ISO8601 string. Offsets are applied during parsing.
-    #[inline(never)] // Avoid deoptimizing the general &str case when presented with a fixed-size string
+    #[inline(never)]
+    #[must_use] // Avoid deoptimizing the general &str case when presented with a fixed-size string
     pub fn parse(ts: &str) -> Option<Self> {
         parse::parse_iso8601(ts.as_bytes()).map(Timestamp)
     }
 
     /// Convert to `time::OffsetDateTime` with the given offset.
     #[inline(always)]
+    #[must_use]
     pub const fn assume_offset(self, offset: UtcOffset) -> time::OffsetDateTime {
         self.0.assume_offset(offset)
     }
@@ -399,6 +386,7 @@ impl Timestamp {
     ///
     /// See [`PrimitiveDateTime::checked_add`] for more implementation details
     #[inline]
+    #[must_use]
     pub const fn checked_add(self, duration: Duration) -> Option<Self> {
         match self.0.checked_add(duration) {
             Some(ts) => Some(Timestamp(ts)),
@@ -410,6 +398,7 @@ impl Timestamp {
     ///
     /// See [`PrimitiveDateTime::checked_sub`] for more implementation details
     #[inline]
+    #[must_use]
     pub const fn checked_sub(self, duration: Duration) -> Option<Self> {
         match self.0.checked_sub(duration) {
             Some(ts) => Some(Timestamp(ts)),
@@ -421,6 +410,7 @@ impl Timestamp {
     ///
     /// See [`PrimitiveDateTime::saturating_add`] for more implementation details
     #[inline]
+    #[must_use]
     pub const fn saturating_add(self, duration: Duration) -> Self {
         Timestamp(self.0.saturating_add(duration))
     }
@@ -429,6 +419,7 @@ impl Timestamp {
     ///
     /// See [`PrimitiveDateTime::saturating_sub`] for more implementation details
     #[inline]
+    #[must_use]
     pub const fn saturating_sub(self, duration: Duration) -> Self {
         Timestamp(self.0.saturating_sub(duration))
     }
@@ -846,17 +837,99 @@ mod ramhorns_impl {
     }
 }
 
-/// `rkyv`-ed Timestamp as a 64-bit signed millisecond offset from the UNIX Epoch.
-///
-/// This value is Endian-agnostic, with zero overhead on little-endian archs.
-#[cfg(feature = "rkyv")]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[repr(transparent)]
-pub struct ArchivedTimestamp(rend::LittleEndian<i64>);
+#[cfg(feature = "rkyv_08")]
+mod rkyv_08_impl {
+    use super::*;
 
-#[cfg(feature = "rkyv")]
-mod rkyv_impl {
+    use rkyv_08::{
+        bytecheck::CheckBytes,
+        place::{Initialized, Place},
+        rancor::{Fallible, Source},
+        rend::i64_le,
+        traits::CopyOptimization,
+        Archive, Deserialize, Serialize,
+    };
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, rkyv_08::Portable)]
+    #[rkyv(crate = rkyv_08)]
+    #[repr(transparent)]
+    pub struct ArchivedTimestamp(pub i64_le);
+
+    // SAFETY: ArchivedTimestamp is repr(transparent) over i64_le
+    unsafe impl Initialized for ArchivedTimestamp {}
+
+    impl ArchivedTimestamp {
+        /// Get the raw millisecond offset
+        #[inline(always)]
+        pub const fn get(self) -> i64 {
+            self.0.to_native()
+        }
+    }
+
+    impl From<ArchivedTimestamp> for Timestamp {
+        fn from(value: ArchivedTimestamp) -> Self {
+            Timestamp::UNIX_EPOCH
+                .checked_add(Duration::milliseconds(value.get()))
+                .unwrap_or(Timestamp::UNIX_EPOCH)
+        }
+    }
+
+    impl Archive for Timestamp {
+        type Archived = ArchivedTimestamp;
+        type Resolver = ();
+
+        // NOTE: This lint is currently bugged, waiting on
+        // https://github.com/rust-lang/rust-clippy/pull/12672
+        #[allow(clippy::undocumented_unsafe_blocks)]
+        const COPY_OPTIMIZATION: CopyOptimization<Self> = unsafe { CopyOptimization::enable() };
+
+        fn resolve(&self, _resolver: Self::Resolver, out: Place<Self::Archived>) {
+            out.write(ArchivedTimestamp(i64_le::from_native(
+                self.duration_since(Timestamp::UNIX_EPOCH).whole_milliseconds() as i64,
+            )));
+        }
+    }
+
+    impl<S: Fallible + ?Sized> Serialize<S> for Timestamp {
+        #[inline(always)]
+        fn serialize(&self, _serializer: &mut S) -> Result<Self::Resolver, S::Error> {
+            Ok(())
+        }
+    }
+
+    impl<D: Fallible + ?Sized> Deserialize<Timestamp, D> for ArchivedTimestamp {
+        #[inline]
+        fn deserialize(&self, _deserializer: &mut D) -> Result<Timestamp, <D as Fallible>::Error> {
+            Ok(Timestamp::from(*self))
+        }
+    }
+
+    // SAFETY: ArchivedTimestamp is repr(transparent) over i64_le
+    unsafe impl<C> CheckBytes<C> for ArchivedTimestamp
+    where
+        C: Fallible + ?Sized,
+        <C as Fallible>::Error: Source,
+    {
+        #[inline(always)]
+        unsafe fn check_bytes<'a>(value: *const Self, context: &mut C) -> Result<(), C::Error> {
+            CheckBytes::<C>::check_bytes(value as *const i64_le, context)
+        }
+    }
+}
+
+#[cfg(feature = "rkyv_07")]
+pub use rkyv_07_impl::ArchivedTimestamp;
+
+#[cfg(feature = "rkyv_07")]
+mod rkyv_07_impl {
     use super::{ArchivedTimestamp, Duration, Timestamp};
+
+    /// `rkyv`-ed Timestamp as a 64-bit signed millisecond offset from the UNIX Epoch.
+    ///
+    /// This value is Endian-agnostic, with zero overhead on little-endian archs.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[repr(transparent)]
+    pub struct ArchivedTimestamp(rend::LittleEndian<i64>);
 
     impl ArchivedTimestamp {
         /// Get the raw millisecond offset
@@ -874,7 +947,7 @@ mod rkyv_impl {
         }
     }
 
-    use rkyv::{Archive, Archived, CheckBytes, Deserialize, Fallible, Serialize};
+    use rkyv_07::{Archive, Archived, CheckBytes, Deserialize, Fallible, Serialize};
 
     impl<C: ?Sized> CheckBytes<C> for ArchivedTimestamp {
         type Error = <rend::LittleEndian<i64> as CheckBytes<C>>::Error;
@@ -921,7 +994,7 @@ mod rkyv_impl {
 mod fred_impl {
     use fred::{
         error::{RedisError, RedisErrorKind},
-        types::{FromRedis, FromRedisKey, RedisKey, RedisValue},
+        types::{Expiration, FromRedis, FromRedisKey, RedisKey, RedisValue},
     };
 
     use super::{Duration, Timestamp};
@@ -964,6 +1037,12 @@ mod fred_impl {
 
             Timestamp::parse(value)
                 .ok_or_else(|| RedisError::new(RedisErrorKind::Parse, "Invalid Timestamp format"))
+        }
+    }
+
+    impl From<Timestamp> for Expiration {
+        fn from(ts: Timestamp) -> Self {
+            Expiration::PXAT(ts.duration_since(Timestamp::UNIX_EPOCH).whole_milliseconds() as i64)
         }
     }
 }
