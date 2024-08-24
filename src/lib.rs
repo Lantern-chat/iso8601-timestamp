@@ -756,15 +756,14 @@ mod rkyv_08_impl {
         bytecheck::CheckBytes,
         place::{Initialized, Place},
         rancor::{Fallible, Source},
-        rend::i64_le,
         traits::CopyOptimization,
-        Archive, Deserialize, Serialize,
+        Archive, Archived, Deserialize, Serialize,
     };
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, rkyv_08::Portable)]
     #[rkyv(crate = rkyv_08)]
     #[repr(transparent)]
-    pub struct ArchivedTimestamp(pub i64_le);
+    pub struct ArchivedTimestamp(pub Archived<i64>);
 
     // SAFETY: ArchivedTimestamp is repr(transparent) over i64_le
     unsafe impl Initialized for ArchivedTimestamp {}
@@ -792,10 +791,11 @@ mod rkyv_08_impl {
         // NOTE: This lint is currently bugged, waiting on
         // https://github.com/rust-lang/rust-clippy/pull/12672
         #[allow(clippy::undocumented_unsafe_blocks)]
-        const COPY_OPTIMIZATION: CopyOptimization<Self> = unsafe { CopyOptimization::enable() };
+        const COPY_OPTIMIZATION: CopyOptimization<Self> =
+            unsafe { CopyOptimization::enable_if(<i64 as Archive>::COPY_OPTIMIZATION.is_enabled()) };
 
         fn resolve(&self, _resolver: Self::Resolver, out: Place<Self::Archived>) {
-            out.write(ArchivedTimestamp(i64_le::from_native(
+            out.write(ArchivedTimestamp(<Archived<i64>>::from_native(
                 self.duration_since(Timestamp::UNIX_EPOCH).whole_milliseconds() as i64,
             )));
         }
@@ -823,7 +823,7 @@ mod rkyv_08_impl {
     {
         #[inline(always)]
         unsafe fn check_bytes<'a>(value: *const Self, context: &mut C) -> Result<(), C::Error> {
-            CheckBytes::<C>::check_bytes(value as *const i64_le, context)
+            CheckBytes::<C>::check_bytes(value as *const Archived<i64>, context)
         }
     }
 }
