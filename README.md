@@ -9,18 +9,16 @@ This crate provides high-performance formatting and parsing routines for ISO8601
 
 The primary purpose of this is to keep the lightweight representation of timestamps within data structures, and only formatting it to a string when needed via Serde.
 
-The `Timestamp` struct is only 12 bytes, while the formatted strings can be as large as 35 bytes, and care is taken to avoid heap allocations when formatting.
+The [`Timestamp`] struct is only 12 bytes, while the formatted strings can be as large as 35 bytes, and care is taken to avoid heap allocations when formatting.
 
 Example:
 ```rust
-use serde::{Serialize, Deserialize};
-use smol_str::SmolStr; // stack-allocation for small strings
 use iso8601_timestamp::Timestamp;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Event {
-    name: SmolStr,
-    ts: Timestamp,
+    name: String,
+    ts: Timestamp, // only 12 bytes
     value: i32,
 }
 ```
@@ -46,10 +44,14 @@ Similarly, when deserializing, it supports either an ISO8601 string or an `i64` 
     - Enables use of a 200-byte lookup table during formatting. Slightly faster with a hot cache. Disabling saves 200 bytes at a ~20% slowdown.
 
 * `serde` (default)
-    - Enables serde implementations for `Timestamp` and `TimestampStr`
+    - Enables serde implementations for `Timestamp` and [`TimestampStr`]
 
-* `rkyv`
-    - Enables `rkyv` archive support for `Timestamp`, serializing it as a 64-bit signed unix offset in milliseconds.
+* `rkyv_07`
+    - Enables `rkyv` 0.7 archive support for `Timestamp`, serializing it as a 64-bit signed unix offset in milliseconds.
+
+* `rkyv_08`
+    - Enables `rkyv` 0.8 archive support for `Timestamp`, serializing it as a 64-bit signed unix offset in milliseconds.
+    - NOTE: The archived representation for 0.8 is endian-agnostic, but will depend on how rkyv is configured. See rkyv's documentation for more information. Both systems will need to be configured identically.
 
 * `verify`
     - Verifies numeric inputs when parsing and fails when non-numeric input is found.
