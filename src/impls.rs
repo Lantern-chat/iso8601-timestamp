@@ -3,10 +3,12 @@ use time::{Date, Month};
 use super::Timestamp;
 
 #[inline(always)]
-#[cfg(any(target_feature = "sse2", target_feature = "avx2"))]
-pub const fn is_leap_year(year: i32) -> bool {
-    // NOTE: Using bitwise operators is intentional
-    (year % 4 == 0) & ((year % 25 != 0) | (year % 16 == 0))
+#[allow(dead_code)]
+const fn is_leap_year(y: i32) -> bool {
+    //(y % 4 == 0) & ((y % 25 != 0) | (y % 16 == 0)) // old version
+
+    // ternary compiles to cmov
+    y & (if y % 25 == 0 { 15 } else { 3 }) == 0
 }
 
 #[inline(always)]
