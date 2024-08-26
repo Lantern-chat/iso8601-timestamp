@@ -3,20 +3,6 @@ use time::{PrimitiveDateTime, UtcOffset};
 
 use crate::ts_str::{template, FormatString, IsValidFormat, TimestampStr};
 
-#[cfg(all(feature = "lookup", not(target_arch = "wasm32")))]
-static LOOKUP: [[u8; 2]; 100] = {
-    let mut table = [[0; 2]; 100];
-
-    let mut i: u8 = 0;
-    while i < 100 {
-        let (a, b) = (i / 10, i % 10);
-        table[i as usize] = [a + b'0', b + b'0'];
-        i += 1;
-    }
-
-    table
-};
-
 #[rustfmt::skip]
 #[allow(unused_assignments, clippy::identity_op)]
 #[inline(always)]
@@ -24,16 +10,6 @@ pub fn do_format<F: t::Bit, O: t::Bit, P: t::Unsigned>(ts: PrimitiveDateTime, of
 where
     FormatString<F, O, P>: IsValidFormat,
 {
-    // Prefetch the table while datetime parts are being destructured.
-    // Might cause slightly worse microbenchmark performance,
-    // but may save a couple nanoseconds in real applications.
-    #[cfg(all(feature = "lookup", any(target_arch = "x86_64", target_arch = "x86")))]
-    // SAFETY: prefetching has no significant side effects nor safety concerns
-    unsafe {
-        import_intrinsics!(x86::{_mm_prefetch, _MM_HINT_T0});
-        _mm_prefetch::<_MM_HINT_T0>(LOOKUP.as_ptr().cast());
-    }
-
     // decompose timestamp
     let (mut year, month, day) = crate::impls::to_calendar_date(ts.date());
     let (hour, minute, second, nanoseconds) = ts.as_hms_nano();
@@ -67,24 +43,14 @@ where
                 // combine these so the compiler can optimize both operations
                 (value, d1) = (value / 100, value % 100);
 
-                #[cfg(all(feature = "lookup", not(target_arch = "wasm32")))]
-                {
-                    let e = LOOKUP[d1 as usize];
-                    len -= 1; buf[len] = e[1];
-                    len -= 1; buf[len] = e[0];
-                }
-
-                #[cfg(not(all(feature = "lookup", not(target_arch = "wasm32"))))]
-                {
-                    let (a, b) = (d1 / 10, d1 % 10);
-                    len -= 1; buf[len] = (b as u8) | b'0';
-                    len -= 1; buf[len] = (a as u8) | b'0';
-                }
+                let (a, b) = (d1 / 10, d1 % 10);
+                len -= 1; buf[len] = (b as u8) | b'0';
+                len -= 1; buf[len] = (a as u8) | b'0';
             }
 
             // handle remainder
             if len == 1 {
-                buf[0] = (value as u8) + b'0';
+                buf[0] = (value as u8) | b'0';
             }
         }};
     }

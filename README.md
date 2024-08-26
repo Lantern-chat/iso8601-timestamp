@@ -40,9 +40,6 @@ Similarly, when deserializing, it supports either an ISO8601 string or an `i64` 
 * `std` (default)
     - Enables standard library features, such as getting the current time.
 
-* `lookup` (default)
-    - Enables use of a 200-byte lookup table during formatting. Slightly faster with a hot cache. Disabling saves 200 bytes at a ~20% slowdown.
-
 * `serde` (default)
     - Enables serde implementations for `Timestamp` and [`TimestampStr`]
 
@@ -56,9 +53,6 @@ Similarly, when deserializing, it supports either an ISO8601 string or an `i64` 
 * `verify`
     - Verifies numeric inputs when parsing and fails when non-numeric input is found.
     - When disabled, parsing ignores invalid input, possibly giving garbage timestamps.
-
-* `nightly`
-    - Enables nightly-specific optimizations, but without it will fallback to workarounds to enable the same optimizations.
 
 * `pg`
     - Enables `ToSql`/`FromSql` implementations for `Timestamp` so it can be directly stored/fetched from a PostgreSQL database using `rust-postgres`

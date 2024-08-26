@@ -28,8 +28,7 @@ rand = ["dep:rand", "time/rand"]
 quickcheck = ["dep:quickcheck", "time/quickcheck"]
 schema = ["schemars"]
 verify = []                                        # Verify numeric input during parsing
-lookup = []                                        # Use lookup table during formatting
-default = ["std", "serde", "lookup"]
+default = ["std", "serde", "rkyv_08"]
 
 [dependencies]
 serde = { optional = true, version = "1" }
@@ -45,10 +44,12 @@ quickcheck = { optional = true, version = "1.0", default-features = false }
 worker = { optional = true, version = "0.3.0" }
 js-sys = { optional = true, version = "0.3" }
 ramhorns = { optional = true, version = "1.0" }
-rkyv_08 = { package = "rkyv", optional = true, version = "0.8.0-alpha.3", default-features = false, features = ["bytecheck"] }
+fred = { optional = true, version = "9.0", default-features = false }
+
 rkyv_07 = { package = "rkyv", optional = true, version = "0.7", default-features = false, features = ["validation"] }
 rend = { optional = true, version = "0.4", default-features = false }
-fred = { optional = true, version = "9.0", default-features = false }
+
+rkyv_08 = { package = "rkyv", optional = true, version = "0.8.0-alpha.3", default-features = false, features = ["bytecheck"] }
 
 [dev-dependencies]
 time = { version = "0.3", features = ["macros", "parsing", "formatting"] }
