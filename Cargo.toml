@@ -1,6 +1,6 @@
 [package]
 name = "iso8601-timestamp"
-version = "0.3.0-alpha.1"
+version = "0.3.0-alpha.2"
 authors = ["novacrazy <novacrazy@gmail.com>"]
 edition = "2018"
 description = "High-performance ISO8601 Timestamp formatting and parsing"
@@ -28,7 +28,7 @@ rand = ["dep:rand", "time/rand"]
 quickcheck = ["dep:quickcheck", "time/quickcheck"]
 schema = ["schemars"]
 verify = []                                        # Verify numeric input during parsing
-default = ["std", "serde", "rkyv_08"]
+default = ["std", "serde"]
 
 [dependencies]
 serde = { optional = true, version = "1" }
@@ -58,7 +58,7 @@ chrono = "0.4"
 iso8601 = "0.6"
 ciborium = "0.2"
 serde = { version = "1", features = ["derive"] }
-#rkyv_07 = { package = "rkyv", version = "0.7", default-features = true }
+rkyv_07 = { package = "rkyv", version = "0.7", default-features = true }
 rkyv_08 = { package = "rkyv", version = "0.8.0-alpha.3", default-features = true }
 
 [[bench]]
