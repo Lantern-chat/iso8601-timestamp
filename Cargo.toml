@@ -20,7 +20,7 @@ std = ["time/std"]
 bson = []
 diesel-pg = ["diesel", "diesel/postgres_backend"]
 js = ["js-sys"]
-pg = ["postgres-types", "bytes", "std"]
+pg = ["postgres-types", "bytes", "std", "postgres-protocol"]
 rkyv_07 = ["dep:rkyv_07", "rend"]
 rkyv_08 = ["dep:rkyv_08"]
 rusqlite = ["dep:rusqlite", "std"]
@@ -37,7 +37,8 @@ bytes = { optional = true, version = "1.1.0" }
 generic-array = "1.0.0"
 schemars = { optional = true, version = "0.8.8" }
 rusqlite = { optional = true, version = "0.32", default-features = false }
-postgres-types = { optional = true, version = "0.2.2", features = ["with-time-0_3"] }
+postgres-types = { optional = true, version = "0.2.2", features = ["with-time-0_3"], default-features = false }
+postgres-protocol = { optional = true, version = "0.6", default-features = false }
 diesel = { optional = true, version = "2", default-features = false, features = ["time", "with-deprecated"] }
 rand = { optional = true, version = "0.8", default-features = false }
 quickcheck = { optional = true, version = "1.0", default-features = false }

@@ -754,19 +754,20 @@ mod rkyv_08_impl {
 
     use rkyv_08::{
         bytecheck::CheckBytes,
-        place::{Initialized, Place},
+        place::Place,
         rancor::{Fallible, Source},
-        traits::CopyOptimization,
+        traits::{CopyOptimization, NoUndef},
         Archive, Archived, Deserialize, Serialize,
     };
 
+    /// `rkyv`-ed Timestamp as a 64-bit signed millisecond offset from the UNIX Epoch.
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, rkyv_08::Portable)]
     #[rkyv(crate = rkyv_08)]
     #[repr(transparent)]
     pub struct ArchivedTimestamp(pub Archived<i64>);
 
     // SAFETY: ArchivedTimestamp is repr(transparent) over i64_le
-    unsafe impl Initialized for ArchivedTimestamp {}
+    unsafe impl NoUndef for ArchivedTimestamp {}
 
     impl ArchivedTimestamp {
         /// Get the raw millisecond offset
@@ -826,6 +827,38 @@ mod rkyv_08_impl {
             CheckBytes::<C>::check_bytes(value as *const Archived<i64>, context)
         }
     }
+
+    #[cfg(feature = "pg")]
+    const _: () = {
+        use postgres_types::{accepts, to_sql_checked, IsNull, ToSql, Type};
+
+        impl ToSql for ArchivedTimestamp {
+            fn to_sql(
+                &self,
+                _ty: &Type,
+                out: &mut bytes::BytesMut,
+            ) -> Result<IsNull, Box<dyn std::error::Error + Sync + Send>> {
+                const EPOCH_OFFSET: i64 = 946684800000000; // 2000-01-01T00:00:00Z
+
+                // convert to microseconds
+                let Some(ts) = self.0.to_native().checked_mul(1000) else {
+                    return Err("Timestamp out of range".into());
+                };
+
+                // convert to postgres timestamp
+                let Some(pts) = ts.checked_sub(EPOCH_OFFSET) else {
+                    return Err("Timestamp out of range".into());
+                };
+
+                postgres_protocol::types::time_to_sql(pts, out);
+
+                Ok(IsNull::No)
+            }
+
+            accepts!(TIMESTAMP, TIMESTAMPTZ);
+            to_sql_checked!();
+        }
+    };
 }
 
 #[cfg(feature = "rkyv_07")]
