@@ -1,6 +1,6 @@
 #![cfg(feature = "rkyv_07")]
 
-use iso8601_timestamp::Timestamp;
+use iso8601_timestamp::{datetime, Timestamp};
 
 use rkyv_07::{
     check_archived_root,
@@ -12,6 +12,10 @@ use rkyv_07::{
 
 #[test]
 fn test_rkyv() {
+    #[cfg(not(feature = "std"))]
+    let ts = Timestamp::from(datetime!(2024-09-01 12:32 PM).replace_millisecond(123).unwrap());
+
+    #[cfg(feature = "std")]
     let ts = Timestamp::from(Timestamp::now_utc().replace_millisecond(123).unwrap());
 
     let mut ser = AllocSerializer::<1024>::default();
