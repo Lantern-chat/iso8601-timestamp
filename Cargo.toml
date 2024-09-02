@@ -26,7 +26,7 @@ rkyv_08 = ["dep:rkyv_08"]
 rusqlite = ["dep:rusqlite", "std"]
 rand = ["dep:rand", "time/rand"]
 quickcheck = ["dep:quickcheck", "time/quickcheck"]
-schema = ["schemars"]
+schema = ["schemars", "std"]
 verify = []                                                  # Verify numeric input during parsing
 default = ["std", "serde"]
 

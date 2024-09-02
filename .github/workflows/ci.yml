@@ -27,12 +27,12 @@ jobs:
                     - ''
                     - js worker
                     - diesel-pg rusqlite pg fred
-                    - serde bson rand quickcheck schema ramhorns rkyv_07 rkyv_08
+                    - bson rand quickcheck schema ramhorns rkyv_07 rkyv_08
 
         steps:
             - uses: actions/checkout@v4
             - uses: dtolnay/rust-toolchain@stable
-            - run: cargo test --verbose --lib --tests --no-default-features --features "${{ matrix.std }} ${{ matrix.verify }} ${{ matrix.external }}"
+            - run: cargo test --verbose --lib --tests --no-default-features --features "serde ${{ matrix.std }} ${{ matrix.verify }} ${{ matrix.external }}"
 
     cross:
         name: Cross / ${{ matrix.target }}
