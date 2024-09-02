@@ -752,6 +752,9 @@ mod ramhorns_impl {
 compile_error!("Cannot enable both rkyv 0.7 and 0.8 features at the same time");
 
 #[cfg(feature = "rkyv_08")]
+pub use rkyv_08_impl::ArchivedTimestamp;
+
+#[cfg(feature = "rkyv_08")]
 mod rkyv_08_impl {
     use super::*;
 
@@ -869,7 +872,7 @@ pub use rkyv_07_impl::ArchivedTimestamp;
 
 #[cfg(feature = "rkyv_07")]
 mod rkyv_07_impl {
-    use super::{ArchivedTimestamp, Duration, Timestamp};
+    use super::{Duration, Timestamp};
 
     /// `rkyv`-ed Timestamp as a 64-bit signed millisecond offset from the UNIX Epoch.
     ///
