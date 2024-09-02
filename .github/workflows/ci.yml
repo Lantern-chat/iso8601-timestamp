@@ -1,0 +1,55 @@
+name: CI
+
+on:
+    push:
+    pull_request:
+    workflow_dispatch:
+    schedule:
+        - cron: '0 0 1 * *'
+
+permissions:
+    contents: read
+
+jobs:
+    features:
+        name: Features / ${{ matrix.std }} ${{ matrix.verify }} ${{ matrix.external }}
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                std:
+                    - ''
+                    - std
+                verify:
+                    - ''
+                    - verify
+                external:
+                    - ''
+                    - js worker
+                    - diesel-pg rusqlite pg fred
+                    - serde bson rand quickcheck schema ramhorns rkyv_07 rkyv_08
+
+        steps:
+            - uses: actions/checkout@v4
+            - uses: dtolnay/rust-toolchain@stable
+            - run: cargo test --verbose --tests --no-default-features --features "${{ matrix.std }} ${{ matrix.verify }} ${{ matrix.external }}"
+
+    cross:
+        name: Cross / ${{ matrix.target }}
+        runs-on: ubuntu-latest
+
+        strategy:
+            fail-fast: false
+            matrix:
+                target:
+                    - i686-unknown-linux-gnu
+                    - i586-unknown-linux-gnu
+                    - armv7-unknown-linux-gnueabihf
+                    - aarch64-unknown-linux-gnu
+                    - thumbv6m-none-eabi
+
+        steps:
+            - uses: actions/checkout@v4
+            - uses: dtolnay/rust-toolchain@stable
+            - run: cargo install cross
+            - run: cross build --no-default-features --features "serde" --target ${{ matrix.target }} --verbose
