@@ -25,9 +25,9 @@ jobs:
                     - verify
                 external:
                     - ''
-                    - js worker
+                    - js worker rkyv_07
                     - diesel-pg rusqlite pg fred
-                    - bson rand quickcheck schema ramhorns rkyv_07 rkyv_08
+                    - bson rand quickcheck schema ramhorns rkyv_08
 
         steps:
             - uses: actions/checkout@v4
@@ -46,7 +46,7 @@ jobs:
                     - i586-unknown-linux-gnu
                     - armv7-unknown-linux-gnueabihf
                     - aarch64-unknown-linux-gnu
-                    - thumbv6m-none-eabi
+                    # - thumbv6m-none-eabi # not supported by time crate
 
         steps:
             - uses: actions/checkout@v4

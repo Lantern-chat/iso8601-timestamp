@@ -748,6 +748,9 @@ mod ramhorns_impl {
     }
 }
 
+#[cfg(all(feature = "rkyv_07", feature = "rkyv_08"))]
+compile_error!("Cannot enable both rkyv 0.7 and 0.8 features at the same time");
+
 #[cfg(feature = "rkyv_08")]
 mod rkyv_08_impl {
     use super::*;
