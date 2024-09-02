@@ -119,6 +119,7 @@ mod tests {
     //     }
     // }
 
+    #[cfg(feature = "std")]
     #[test]
     fn test_template() {
         let now = crate::Timestamp::now_utc();

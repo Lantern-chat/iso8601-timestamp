@@ -1,3 +1,5 @@
+#![cfg(feature = "std")]
+
 use serde::{Deserialize, Serialize};
 
 use iso8601_timestamp::Timestamp;

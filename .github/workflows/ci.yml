@@ -32,7 +32,7 @@ jobs:
         steps:
             - uses: actions/checkout@v4
             - uses: dtolnay/rust-toolchain@stable
-            - run: cargo test --verbose --tests --no-default-features --features "${{ matrix.std }} ${{ matrix.verify }} ${{ matrix.external }}"
+            - run: cargo test --verbose --lib --tests --no-default-features --features "${{ matrix.std }} ${{ matrix.verify }} ${{ matrix.external }}"
 
     cross:
         name: Cross / ${{ matrix.target }}

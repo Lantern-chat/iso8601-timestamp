@@ -299,6 +299,7 @@ mod tests {
         assert_eq!(i, Some(1234567890));
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn test_parse_int2() {
         for i in 0..=99 {
@@ -308,6 +309,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn test_parse_int4() {
         for i in 0..=9999 {
