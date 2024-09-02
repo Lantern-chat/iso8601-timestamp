@@ -50,7 +50,7 @@ fred = { optional = true, version = "9.0", default-features = false }
 rkyv_07 = { package = "rkyv", optional = true, version = "0.7", default-features = false, features = ["validation"] }
 rend = { optional = true, version = "0.4", default-features = false }
 
-rkyv_08 = { package = "rkyv", optional = true, version = "0.8.0-alpha.3", default-features = false, features = ["bytecheck"] }
+rkyv_08 = { package = "rkyv", optional = true, version = "0.8.0-rc.1", default-features = false, features = ["bytecheck"] }
 
 [dev-dependencies]
 time = { version = "0.3", features = ["macros", "parsing", "formatting"] }
@@ -60,6 +60,7 @@ iso8601 = "0.6"
 ciborium = "0.2"
 serde = { version = "1", features = ["derive"] }
 rkyv_07 = { package = "rkyv", version = "0.7", default-features = true }
+rkyv_08 = { package = "rkyv", version = "0.8.0-rc.1", default-features = true }
 
 [[bench]]
 name = "timestamp"
