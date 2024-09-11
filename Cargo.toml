@@ -21,7 +21,7 @@ bson = []
 diesel-pg = ["diesel", "diesel/postgres_backend"]
 js = ["js-sys"]
 pg = ["postgres-types", "bytes", "std", "postgres-protocol"]
-rkyv_07 = ["dep:rkyv_07", "rend"]
+rkyv_07 = ["dep:rkyv_07", "rend_04"]
 rkyv_08 = ["dep:rkyv_08"]
 rusqlite = ["dep:rusqlite", "std"]
 rand = ["dep:rand", "time/rand"]
@@ -48,9 +48,9 @@ ramhorns = { optional = true, version = "1.0" }
 fred = { optional = true, version = "9.0", default-features = false }
 
 rkyv_07 = { package = "rkyv", optional = true, version = "0.7", default-features = false, features = ["validation"] }
-rend = { optional = true, version = "0.4", default-features = false }
+rend_04 = { package = "rend", optional = true, version = "0.4", default-features = false }
 
-rkyv_08 = { package = "rkyv", optional = true, version = "0.8.0-rc.1", default-features = false, features = ["bytecheck"] }
+rkyv_08 = { package = "rkyv", optional = true, version = "0.8", default-features = false, features = ["bytecheck"] }
 
 [dev-dependencies]
 time = { version = "0.3", features = ["macros", "parsing", "formatting"] }
@@ -60,7 +60,7 @@ iso8601 = "0.6"
 ciborium = "0.2"
 serde = { version = "1", features = ["derive"] }
 rkyv_07 = { package = "rkyv", version = "0.7", default-features = true }
-rkyv_08 = { package = "rkyv", version = "0.8.0-rc.1", default-features = true }
+rkyv_08 = { package = "rkyv", version = "0.8", default-features = true }
 
 [[bench]]
 name = "timestamp"

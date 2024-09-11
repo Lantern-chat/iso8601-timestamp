@@ -580,6 +580,34 @@ mod diesel_impl {
             <PrimitiveDateTime as ToSql<DbTimestamptz, DB>>::to_sql(self, out)
         }
     }
+
+    #[cfg(any(feature = "rkyv_07", feature = "rkyv_08"))]
+    const _: () = {
+        use diesel::query_builder::bind_collector::RawBytesBindCollector;
+
+        use super::ArchivedTimestamp;
+
+        impl<DB> ToSql<DbTimestamp, DB> for ArchivedTimestamp
+        where
+            for<'c> DB: Backend<BindCollector<'c> = RawBytesBindCollector<DB>>,
+            Timestamp: ToSql<DbTimestamp, DB>,
+        {
+            fn to_sql<'b>(&'b self, out: &mut serialize::Output<'b, '_, DB>) -> serialize::Result {
+                <Timestamp as ToSql<DbTimestamp, DB>>::to_sql(&Timestamp::from(*self), &mut out.reborrow())
+            }
+        }
+
+        #[cfg(feature = "diesel-pg")]
+        impl<DB> ToSql<DbTimestamptz, DB> for ArchivedTimestamp
+        where
+            for<'c> DB: Backend<BindCollector<'c> = RawBytesBindCollector<DB>>,
+            Timestamp: ToSql<DbTimestamptz, DB>,
+        {
+            fn to_sql<'b>(&'b self, out: &mut serialize::Output<'b, '_, DB>) -> serialize::Result {
+                <Timestamp as ToSql<DbTimestamptz, DB>>::to_sql(&Timestamp::from(*self), &mut out.reborrow())
+            }
+        }
+    };
 }
 
 #[cfg(feature = "pg")]
@@ -614,6 +642,36 @@ mod pg_impl {
 
         accepts!(TIMESTAMP, TIMESTAMPTZ);
     }
+
+    #[cfg(any(feature = "rkyv_07", feature = "rkyv_08"))]
+    const _: () = {
+        impl ToSql for super::ArchivedTimestamp {
+            fn to_sql(
+                &self,
+                _ty: &Type,
+                out: &mut bytes::BytesMut,
+            ) -> Result<IsNull, Box<dyn core::error::Error + Sync + Send>> {
+                const EPOCH_OFFSET: i64 = 946684800000000; // 2000-01-01T00:00:00Z
+
+                // convert to microseconds
+                let Some(ts) = self.0.to_native().checked_mul(1000) else {
+                    return Err("Timestamp out of range".into());
+                };
+
+                // convert to postgres timestamp
+                let Some(pts) = ts.checked_sub(EPOCH_OFFSET) else {
+                    return Err("Timestamp out of range".into());
+                };
+
+                postgres_protocol::types::time_to_sql(pts, out);
+
+                Ok(IsNull::No)
+            }
+
+            accepts!(TIMESTAMP, TIMESTAMPTZ);
+            to_sql_checked!();
+        }
+    };
 }
 
 #[cfg(feature = "rusqlite")]
@@ -673,6 +731,17 @@ mod rusqlite_impl {
             Ok(ToSqlOutput::Owned(Value::Text(self.format().to_owned())))
         }
     }
+
+    #[cfg(any(feature = "rkyv_07", feature = "rkyv_08"))]
+    const _: () = {
+        impl ToSql for super::ArchivedTimestamp {
+            fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
+                Ok(ToSqlOutput::Owned(Value::Text(
+                    Timestamp::from(*self).format().to_owned(),
+                )))
+            }
+        }
+    };
 }
 
 #[cfg(feature = "schema")]
@@ -747,12 +816,11 @@ mod quickcheck_impl {
 mod ramhorns_impl {
     use super::{formats::FullMilliseconds, ts_str::IsValidFormat, Timestamp};
 
+    use generic_array::typenum::Unsigned;
     use ramhorns::{encoding::Encoder, Content};
 
     impl Content for Timestamp {
         fn capacity_hint(&self, _tpl: &ramhorns::Template) -> usize {
-            use generic_array::typenum::Unsigned;
-
             <FullMilliseconds as IsValidFormat>::Length::USIZE
         }
 
@@ -760,6 +828,19 @@ mod ramhorns_impl {
             encoder.write_unescaped(&self.format())
         }
     }
+
+    #[cfg(any(feature = "rkyv_07", feature = "rkyv_08"))]
+    const _: () = {
+        impl Content for super::ArchivedTimestamp {
+            fn capacity_hint(&self, _tpl: &ramhorns::Template) -> usize {
+                <FullMilliseconds as IsValidFormat>::Length::USIZE
+            }
+
+            fn render_escaped<E: Encoder>(&self, encoder: &mut E) -> Result<(), E::Error> {
+                encoder.write_unescaped(&Timestamp::from(*self).format())
+            }
+        }
+    };
 }
 
 #[cfg(all(feature = "rkyv_07", feature = "rkyv_08"))]
@@ -767,6 +848,9 @@ compile_error!("Cannot enable both rkyv 0.7 and 0.8 features at the same time");
 
 #[cfg(feature = "rkyv_08")]
 pub use rkyv_08_impl::ArchivedTimestamp;
+
+#[cfg(feature = "rkyv_07")]
+pub use rkyv_07_impl::ArchivedTimestamp;
 
 #[cfg(feature = "rkyv_08")]
 mod rkyv_08_impl {
@@ -842,42 +926,7 @@ mod rkyv_08_impl {
             CheckBytes::<C>::check_bytes(value as *const Archived<i64>, context)
         }
     }
-
-    #[cfg(feature = "pg")]
-    const _: () = {
-        use postgres_types::{accepts, to_sql_checked, IsNull, ToSql, Type};
-
-        impl ToSql for ArchivedTimestamp {
-            fn to_sql(
-                &self,
-                _ty: &Type,
-                out: &mut bytes::BytesMut,
-            ) -> Result<IsNull, Box<dyn core::error::Error + Sync + Send>> {
-                const EPOCH_OFFSET: i64 = 946684800000000; // 2000-01-01T00:00:00Z
-
-                // convert to microseconds
-                let Some(ts) = self.0.to_native().checked_mul(1000) else {
-                    return Err("Timestamp out of range".into());
-                };
-
-                // convert to postgres timestamp
-                let Some(pts) = ts.checked_sub(EPOCH_OFFSET) else {
-                    return Err("Timestamp out of range".into());
-                };
-
-                postgres_protocol::types::time_to_sql(pts, out);
-
-                Ok(IsNull::No)
-            }
-
-            accepts!(TIMESTAMP, TIMESTAMPTZ);
-            to_sql_checked!();
-        }
-    };
 }
-
-#[cfg(feature = "rkyv_07")]
-pub use rkyv_07_impl::ArchivedTimestamp;
 
 #[cfg(feature = "rkyv_07")]
 mod rkyv_07_impl {
@@ -1007,4 +1056,27 @@ mod fred_impl {
             Expiration::PXAT(ts.duration_since(Timestamp::UNIX_EPOCH).whole_milliseconds() as i64)
         }
     }
+
+    #[cfg(any(feature = "rkyv_07", feature = "rkyv_08"))]
+    const _: () = {
+        use super::ArchivedTimestamp;
+
+        impl From<ArchivedTimestamp> for RedisValue {
+            fn from(ts: ArchivedTimestamp) -> Self {
+                RedisValue::Integer(ts.get())
+            }
+        }
+
+        impl From<ArchivedTimestamp> for RedisKey {
+            fn from(value: ArchivedTimestamp) -> Self {
+                RedisKey::from(&*Timestamp::from(value).format())
+            }
+        }
+
+        impl From<ArchivedTimestamp> for Expiration {
+            fn from(ts: ArchivedTimestamp) -> Self {
+                Expiration::PXAT(ts.get())
+            }
+        }
+    };
 }
