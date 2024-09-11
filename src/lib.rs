@@ -764,7 +764,7 @@ mod rkyv_08_impl {
         bytecheck::CheckBytes,
         place::Place,
         rancor::{Fallible, Source},
-        traits::{CopyOptimization, NoUndef},
+        traits::NoUndef,
         Archive, Archived, Deserialize, Serialize,
     };
 
@@ -780,6 +780,7 @@ mod rkyv_08_impl {
     impl ArchivedTimestamp {
         /// Get the raw millisecond offset
         #[inline(always)]
+        #[must_use]
         pub const fn get(self) -> i64 {
             self.0.to_native()
         }
@@ -796,12 +797,6 @@ mod rkyv_08_impl {
     impl Archive for Timestamp {
         type Archived = ArchivedTimestamp;
         type Resolver = ();
-
-        // NOTE: This lint is currently bugged, waiting on
-        // https://github.com/rust-lang/rust-clippy/pull/12672
-        #[allow(clippy::undocumented_unsafe_blocks)]
-        const COPY_OPTIMIZATION: CopyOptimization<Self> =
-            unsafe { CopyOptimization::enable_if(<i64 as Archive>::COPY_OPTIMIZATION.is_enabled()) };
 
         fn resolve(&self, _resolver: Self::Resolver, out: Place<Self::Archived>) {
             out.write(ArchivedTimestamp(<Archived<i64>>::from_native(
@@ -876,16 +871,19 @@ pub use rkyv_07_impl::ArchivedTimestamp;
 mod rkyv_07_impl {
     use super::{Duration, Timestamp};
 
+    use rend_04::LittleEndian;
+
     /// `rkyv`-ed Timestamp as a 64-bit signed millisecond offset from the UNIX Epoch.
     ///
     /// This value is Endian-agnostic, with zero overhead on little-endian archs.
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
     #[repr(transparent)]
-    pub struct ArchivedTimestamp(rend::LittleEndian<i64>);
+    pub struct ArchivedTimestamp(LittleEndian<i64>);
 
     impl ArchivedTimestamp {
         /// Get the raw millisecond offset
         #[inline(always)]
+        #[must_use]
         pub const fn get(self) -> i64 {
             self.0.value()
         }
@@ -902,7 +900,7 @@ mod rkyv_07_impl {
     use rkyv_07::{Archive, Archived, CheckBytes, Deserialize, Fallible, Serialize};
 
     impl<C: ?Sized> CheckBytes<C> for ArchivedTimestamp {
-        type Error = <rend::LittleEndian<i64> as CheckBytes<C>>::Error;
+        type Error = <LittleEndian<i64> as CheckBytes<C>>::Error;
 
         #[inline(always)]
         unsafe fn check_bytes<'a>(value: *const Self, _context: &mut C) -> Result<&'a Self, Self::Error> {
@@ -915,7 +913,7 @@ mod rkyv_07_impl {
         type Resolver = ();
 
         unsafe fn resolve(&self, _pos: usize, _resolver: Self::Resolver, out: *mut Self::Archived) {
-            out.write(ArchivedTimestamp(rend::LittleEndian::<i64>::new(
+            out.write(ArchivedTimestamp(LittleEndian::<i64>::new(
                 self.duration_since(Timestamp::UNIX_EPOCH).whole_milliseconds() as i64,
             )))
         }
