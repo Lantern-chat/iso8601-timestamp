@@ -595,7 +595,7 @@ mod pg_impl {
             &self,
             ty: &Type,
             out: &mut bytes::BytesMut,
-        ) -> Result<IsNull, Box<dyn std::error::Error + Sync + Send>>
+        ) -> Result<IsNull, Box<dyn core::error::Error + Sync + Send>>
         where
             Self: Sized,
         {
@@ -608,7 +608,7 @@ mod pg_impl {
 
     impl<'a> FromSql<'a> for Timestamp {
         #[inline]
-        fn from_sql(ty: &Type, raw: &'a [u8]) -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
+        fn from_sql(ty: &Type, raw: &'a [u8]) -> Result<Self, Box<dyn core::error::Error + Sync + Send>> {
             PrimitiveDateTime::from_sql(ty, raw).map(Timestamp)
         }
 
@@ -626,9 +626,11 @@ mod rusqlite_impl {
     #[derive(Debug)]
     struct InvalidTimestamp;
 
-    impl std::error::Error for InvalidTimestamp {}
-    impl std::fmt::Display for InvalidTimestamp {
-        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    use core::{error, fmt, str};
+
+    impl error::Error for InvalidTimestamp {}
+    impl fmt::Display for InvalidTimestamp {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             f.write_str("Invalid ISO8601 Timestamp")
         }
     }
@@ -637,7 +639,7 @@ mod rusqlite_impl {
         fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
             // https://www.sqlite.org/lang_datefunc.html
             match value {
-                ValueRef::Text(bytes) => match core::str::from_utf8(bytes) {
+                ValueRef::Text(bytes) => match str::from_utf8(bytes) {
                     Err(e) => Err(FromSqlError::Other(Error::Utf8Error(e).into())),
                     Ok(ts) => match Timestamp::parse(ts) {
                         Some(ts) => Ok(ts),
@@ -843,7 +845,7 @@ mod rkyv_08_impl {
                 &self,
                 _ty: &Type,
                 out: &mut bytes::BytesMut,
-            ) -> Result<IsNull, Box<dyn std::error::Error + Sync + Send>> {
+            ) -> Result<IsNull, Box<dyn core::error::Error + Sync + Send>> {
                 const EPOCH_OFFSET: i64 = 946684800000000; // 2000-01-01T00:00:00Z
 
                 // convert to microseconds

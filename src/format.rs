@@ -125,7 +125,7 @@ mod tests {
         let now = crate::Timestamp::now_utc();
 
         fn as_str(x: &[u8]) -> &str {
-            std::str::from_utf8(x).unwrap()
+            core::str::from_utf8(x).unwrap()
         }
 
         macro_rules! g {
