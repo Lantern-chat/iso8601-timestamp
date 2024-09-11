@@ -646,10 +646,22 @@ mod rusqlite_impl {
                         None => Err(FromSqlError::Other(InvalidTimestamp.into())),
                     },
                 },
+
                 // according to the link above, dates stored as integers are seconds since unix epoch
                 ValueRef::Integer(ts) => Timestamp::UNIX_EPOCH
                     .checked_add(Duration::seconds(ts))
                     .ok_or_else(|| FromSqlError::OutOfRange(ts)),
+
+                // according to the link above, dates stored as floats are the number of
+                // fractional days since -4713-11-24 12:00:00, and 2440587.5 is the
+                // number of days between -4713-11-24 12:00:00 and 1970-01-01 00:00:00
+                ValueRef::Real(ts) => {
+                    let ts = Duration::seconds_f64((ts - 2440587.5) * 86_400.0);
+
+                    Timestamp::UNIX_EPOCH
+                        .checked_add(ts)
+                        .ok_or_else(|| FromSqlError::OutOfRange(ts.whole_seconds()))
+                }
 
                 _ => Err(FromSqlError::InvalidType),
             }
