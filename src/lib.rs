@@ -98,33 +98,28 @@ impl From<PrimitiveDateTime> for Timestamp {
 // SystemTime::now() is not implemented on wasm32
 #[cfg(all(feature = "std", not(any(target_arch = "wasm64", target_arch = "wasm32"))))]
 impl Timestamp {
-    /// Get the current time, assuming UTC
-    ///
-    /// # Panics
-    /// This will panic if the System Time is before the Unix Epoch.
+    /// Get the current time, assuming UTC.
     #[inline]
     #[must_use]
     pub fn now_utc() -> Self {
-        Timestamp(
-            *Self::UNIX_EPOCH
-                + SystemTime::UNIX_EPOCH
-                    .elapsed()
-                    .expect("SystemTime before UNIX_EPOCH"),
-        )
+        Timestamp::from(SystemTime::now())
     }
 }
 
 #[cfg(all(feature = "worker", target_arch = "wasm32", not(feature = "js")))]
 impl Timestamp {
-    /// Get the current time, assuming UTC
-    #[inline]
+    /// Get the current time, assuming UTC.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the current time is before the UNIX Epoch.
     #[must_use]
     pub fn now_utc() -> Self {
         match Timestamp::UNIX_EPOCH
             .checked_add(Duration::milliseconds(worker::Date::now().as_millis() as i64))
         {
             Some(ts) => ts,
-            None => unreachable!("Invalid Date::now() value"),
+            None => panic!("Invalid Date::now() value"),
         }
     }
 }
@@ -135,13 +130,16 @@ impl Timestamp {
     not(feature = "worker")
 ))]
 impl Timestamp {
-    /// Get the current time, assuming UTC
-    #[inline]
+    /// Get the current time, assuming UTC.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the current time is before the UNIX Epoch.
     #[must_use]
     pub fn now_utc() -> Self {
         match Timestamp::UNIX_EPOCH.checked_add(Duration::milliseconds(js_sys::Date::now() as i64)) {
             Some(ts) => ts,
-            None => unreachable!("Invalid Date::now() value"),
+            None => panic!("Invalid Date::now() value"),
         }
     }
 }
@@ -886,7 +884,7 @@ mod rkyv_08_impl {
         fn from(value: ArchivedTimestamp) -> Self {
             Timestamp::UNIX_EPOCH
                 .checked_add(Duration::milliseconds(value.get()))
-                .unwrap_or(Timestamp::UNIX_EPOCH)
+                .unwrap_or(Timestamp::UNIX_EPOCH) // should never fail, but provide a sane fallback anyway
         }
     }
 

@@ -1,6 +1,6 @@
 [package]
 name = "iso8601-timestamp"
-version = "0.3.0-rc.1"
+version = "0.3.0"
 authors = ["novacrazy <novacrazy@gmail.com>"]
 edition = "2018"
 description = "High-performance ISO8601 Timestamp formatting and parsing"
@@ -31,10 +31,10 @@ verify = []                                                  # Verify numeric in
 default = ["std", "serde"]
 
 [dependencies]
+generic-array = "1.0.0"
 serde = { optional = true, version = "1", default-features = false }
 time = { version = "0.3", default-features = false, features = ["macros"] }
 bytes = { optional = true, version = "1.1.0" }
-generic-array = "1.0.0"
 schemars = { optional = true, version = "0.8.8" }
 rusqlite = { optional = true, version = "0.32", default-features = false }
 postgres-types = { optional = true, version = "0.2.2", features = ["with-time-0_3"], default-features = false }
@@ -42,7 +42,7 @@ postgres-protocol = { optional = true, version = "0.6", default-features = false
 diesel = { optional = true, version = "2", default-features = false, features = ["time", "with-deprecated"] }
 rand = { optional = true, version = "0.8", default-features = false }
 quickcheck = { optional = true, version = "1.0", default-features = false }
-worker = { optional = true, version = "0.3.0" }
+worker = { optional = true, version = "0.4" }
 js-sys = { optional = true, version = "0.3" }
 ramhorns = { optional = true, version = "1.0" }
 fred = { optional = true, version = "9.0", default-features = false }
