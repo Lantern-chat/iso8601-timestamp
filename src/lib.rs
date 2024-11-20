@@ -1078,3 +1078,28 @@ mod fred_impl {
         }
     };
 }
+
+#[cfg(feature = "borsh")]
+mod borsh_impl {
+    use super::{Duration, Timestamp};
+
+    use borsh::{io, BorshDeserialize, BorshSerialize};
+
+    impl BorshSerialize for Timestamp {
+        fn serialize<W: io::Write>(&self, writer: &mut W) -> io::Result<()> {
+            let ts = self.duration_since(Timestamp::UNIX_EPOCH).whole_milliseconds() as i64;
+
+            ts.serialize(writer)
+        }
+    }
+
+    impl BorshDeserialize for Timestamp {
+        fn deserialize_reader<R: io::Read>(reader: &mut R) -> io::Result<Self> {
+            let ts = i64::deserialize_reader(reader)?;
+
+            Timestamp::UNIX_EPOCH
+                .checked_add(Duration::milliseconds(ts))
+                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Timestamp out of range"))
+        }
+    }
+}

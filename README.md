@@ -82,8 +82,12 @@ Similarly, when deserializing, it supports either an ISO8601 string or an `i64` 
     - Enables support for `now_utc()` in WASM using `js-sys`
 
 * `ramhorns`
-    - Implements `Content` for `Timestamp`, formatting it as a regular ISO8601 timestamp. Note that `ramhorns` is GPLv3.
+    - Implements `Content` for `Timestamp`, formatting it as a regular ISO8601 timestamp.
 
 * `fred`
     - Implements conversions between `Timestamp` and `RedisValue`/`RedisKey` to be used with `fred` Redis client.
     - Values are stored as milliseconds since the Unix Epoch, and keys are stored as ISO8601 strings.
+
+* `borsh`
+    - Implements `Borsh` (de)serialization for `Timestamp` using the `borsh` crate.
+    - Timestamps are serialized as `i64` milliseconds since the Unix Epoch.

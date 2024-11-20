@@ -1,6 +1,6 @@
 [package]
 name = "iso8601-timestamp"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["novacrazy <novacrazy@gmail.com>"]
 edition = "2018"
 description = "High-performance ISO8601 Timestamp formatting and parsing"
@@ -13,7 +13,7 @@ documentation = "https://docs.rs/iso8601-timestamp"
 repository = "https://github.com/Lantern-chat/iso8601-timestamp"
 
 [package.metadata.docs.rs]
-features = ["serde", "pg", "schema", "rusqlite", "rand", "quickcheck"]
+features = ["serde", "pg", "schema", "rusqlite", "rand", "quickcheck", "borsh"]
 
 [features]
 std = ["time/std"]
@@ -46,6 +46,7 @@ worker = { optional = true, version = "0.4" }
 js-sys = { optional = true, version = "0.3" }
 ramhorns = { optional = true, version = "1.0" }
 fred = { optional = true, version = "9.0", default-features = false }
+borsh = { optional = true, version = "1", default-features = false }
 
 rkyv_07 = { package = "rkyv", optional = true, version = "0.7", default-features = false, features = ["validation"] }
 rend_04 = { package = "rend", optional = true, version = "0.4", default-features = false }
