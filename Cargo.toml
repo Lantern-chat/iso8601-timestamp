@@ -1,6 +1,6 @@
 [package]
 name = "iso8601-timestamp"
-version = "0.3.1"
+version = "0.3.2"
 authors = ["novacrazy <novacrazy@gmail.com>"]
 edition = "2018"
 description = "High-performance ISO8601 Timestamp formatting and parsing"
@@ -45,7 +45,7 @@ quickcheck = { optional = true, version = "1.0", default-features = false }
 worker = { optional = true, version = "0.4" }
 js-sys = { optional = true, version = "0.3" }
 ramhorns = { optional = true, version = "1.0" }
-fred = { optional = true, version = "9.0", default-features = false }
+fred = { optional = true, version = "10.0", default-features = false }
 borsh = { optional = true, version = "1", default-features = false }
 
 rkyv_07 = { package = "rkyv", optional = true, version = "0.7", default-features = false, features = ["validation"] }

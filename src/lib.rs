@@ -432,7 +432,7 @@ mod serde_impl {
 
             struct TsVisitor;
 
-            impl<'de> Visitor<'de> for TsVisitor {
+            impl Visitor<'_> for TsVisitor {
                 type Value = Timestamp;
 
                 fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -1002,50 +1002,49 @@ mod rkyv_07_impl {
 #[cfg(feature = "fred")]
 mod fred_impl {
     use fred::{
-        error::{RedisError, RedisErrorKind},
-        types::{Expiration, FromRedis, FromRedisKey, RedisKey, RedisValue},
+        error::{Error, ErrorKind},
+        types::{Expiration, FromKey, FromValue, Key, Value},
     };
 
     use super::{Duration, Timestamp};
 
-    impl From<Timestamp> for RedisValue {
+    impl From<Timestamp> for Value {
         fn from(ts: Timestamp) -> Self {
-            RedisValue::Integer(ts.duration_since(Timestamp::UNIX_EPOCH).whole_milliseconds() as i64)
+            Value::Integer(ts.duration_since(Timestamp::UNIX_EPOCH).whole_milliseconds() as i64)
         }
     }
 
-    impl From<Timestamp> for RedisKey {
+    impl From<Timestamp> for Key {
         fn from(ts: Timestamp) -> Self {
-            RedisKey::from(&*ts.format())
+            Key::from(&*ts.format())
         }
     }
 
-    impl FromRedis for Timestamp {
-        fn from_value(value: RedisValue) -> Result<Self, RedisError> {
+    impl FromValue for Timestamp {
+        fn from_value(value: Value) -> Result<Self, Error> {
             match value {
-                RedisValue::String(ts) => Timestamp::parse(&ts)
-                    .ok_or_else(|| RedisError::new(RedisErrorKind::Parse, "Invalid Timestamp format")),
-                RedisValue::Bytes(ts) => match core::str::from_utf8(&ts) {
+                Value::String(ts) => Timestamp::parse(&ts)
+                    .ok_or_else(|| Error::new(ErrorKind::Parse, "Invalid Timestamp format")),
+                Value::Bytes(ts) => match core::str::from_utf8(&ts) {
                     Ok(ts) => Timestamp::parse(ts)
-                        .ok_or_else(|| RedisError::new(RedisErrorKind::Parse, "Invalid Timestamp format")),
-                    Err(_) => Err(RedisError::new(RedisErrorKind::Parse, "Invalid UTF-8 Timestamp")),
+                        .ok_or_else(|| Error::new(ErrorKind::Parse, "Invalid Timestamp format")),
+                    Err(_) => Err(Error::new(ErrorKind::Parse, "Invalid UTF-8 Timestamp")),
                 },
-                RedisValue::Integer(ts) => Timestamp::UNIX_EPOCH
+                Value::Integer(ts) => Timestamp::UNIX_EPOCH
                     .checked_add(Duration::seconds(ts))
-                    .ok_or_else(|| RedisError::new(RedisErrorKind::Parse, "Timestamp out of range")),
-                _ => Err(RedisError::new(RedisErrorKind::Parse, "Invalid Timestamp type")),
+                    .ok_or_else(|| Error::new(ErrorKind::Parse, "Timestamp out of range")),
+                _ => Err(Error::new(ErrorKind::Parse, "Invalid Timestamp type")),
             }
         }
     }
 
-    impl FromRedisKey for Timestamp {
-        fn from_key(value: RedisKey) -> Result<Self, RedisError> {
+    impl FromKey for Timestamp {
+        fn from_key(value: Key) -> Result<Self, Error> {
             let Ok(value) = core::str::from_utf8(value.as_bytes()) else {
-                return Err(RedisError::new(RedisErrorKind::Parse, "Invalid UTF-8 Key"));
+                return Err(Error::new(ErrorKind::Parse, "Invalid UTF-8 Key"));
             };
 
-            Timestamp::parse(value)
-                .ok_or_else(|| RedisError::new(RedisErrorKind::Parse, "Invalid Timestamp format"))
+            Timestamp::parse(value).ok_or_else(|| Error::new(ErrorKind::Parse, "Invalid Timestamp format"))
         }
     }
 
@@ -1059,15 +1058,15 @@ mod fred_impl {
     const _: () = {
         use super::ArchivedTimestamp;
 
-        impl From<ArchivedTimestamp> for RedisValue {
+        impl From<ArchivedTimestamp> for Value {
             fn from(ts: ArchivedTimestamp) -> Self {
-                RedisValue::Integer(ts.get())
+                Value::Integer(ts.get())
             }
         }
 
-        impl From<ArchivedTimestamp> for RedisKey {
+        impl From<ArchivedTimestamp> for Key {
             fn from(value: ArchivedTimestamp) -> Self {
-                RedisKey::from(&*Timestamp::from(value).format())
+                Key::from(&*Timestamp::from(value).format())
             }
         }
 
