@@ -42,7 +42,7 @@ postgres-protocol = { optional = true, version = "0.6", default-features = false
 diesel = { optional = true, version = "2", default-features = false, features = ["time", "with-deprecated"] }
 rand = { optional = true, version = "0.8", default-features = false }
 quickcheck = { optional = true, version = "1.0", default-features = false }
-worker = { optional = true, version = "0.4" }
+worker = { optional = true, version = "0.5" }
 js-sys = { optional = true, version = "0.3" }
 ramhorns = { optional = true, version = "1.0" }
 fred = { optional = true, version = "10.0", default-features = false }
