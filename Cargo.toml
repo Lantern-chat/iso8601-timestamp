@@ -63,6 +63,8 @@ serde = { version = "1", features = ["derive"] }
 rkyv_07 = { package = "rkyv", version = "0.7", default-features = true }
 rkyv_08 = { package = "rkyv", version = "0.8", default-features = true }
 
+rusqlite = { version = "0.32", default-features = false, features = ["bundled"] }
+
 [[bench]]
 name = "timestamp"
 path = "benches/timestamp.rs"
