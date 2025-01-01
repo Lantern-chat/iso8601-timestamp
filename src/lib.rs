@@ -432,7 +432,8 @@ mod serde_impl {
 
             struct TsVisitor;
 
-            impl Visitor<'_> for TsVisitor {
+            #[allow(clippy::needless_lifetimes)] // breaks bson support if removed
+            impl<'de> Visitor<'de> for TsVisitor {
                 type Value = Timestamp;
 
                 fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
