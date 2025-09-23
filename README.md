@@ -43,9 +43,6 @@ Similarly, when deserializing, it supports either an ISO8601 string or an `i64` 
 * `serde` (default)
     - Enables serde implementations for `Timestamp` and [`TimestampStr`]
 
-* `rkyv_07`
-    - Enables `rkyv` 0.7 archive support for `Timestamp`, serializing it as a 64-bit signed unix offset in milliseconds.
-
 * `rkyv_08`
     - Enables `rkyv` 0.8 archive support for `Timestamp`, serializing it as a 64-bit signed unix offset in milliseconds.
     - NOTE: The archived representation for 0.8 is endian-agnostic, but will depend on how rkyv is configured. See rkyv's documentation for more information. Both systems will need to be configured identically.
@@ -67,7 +64,7 @@ Similarly, when deserializing, it supports either an ISO8601 string or an `i64` 
     - Enables implementation for `JsonSchema` for generating a JSON schema on the fly using `schemars`.
 
 * `bson`
-    - Enables `visit_map` implementation to handle deserialising BSON (MongoDB) DateTime format, `{ $date: string }`.
+    - Enables `visit_map` implementation to handle deserializing BSON (MongoDB) DateTime format, `{ $date: string }`.
 
 * `rand`
     - Enables `rand` implementations, to generate random timestamps.

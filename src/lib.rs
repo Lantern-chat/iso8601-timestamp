@@ -476,7 +476,11 @@ mod serde_impl {
                             Err(_) => Err(M::Error::custom("Invalid Number in `$numberLong` field")),
                         },
 
-                        _ => Err(M::Error::custom(format!("Unexpected key in map: {key}"))),
+                        #[cfg(not(feature = "std"))]
+                        _ => Err(M::Error::custom("Unexpected key in map")),
+
+                        #[cfg(feature = "std")]
+                        _ => Err(M::Error::custom(format_args!("Unexpected key in map: {key}"))),
                     }
                 }
 
