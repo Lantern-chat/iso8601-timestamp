@@ -565,7 +565,7 @@ mod diesel_impl {
         }
     }
 
-    #[cfg(any(feature = "rkyv_07", feature = "rkyv_08"))]
+    #[cfg(feature = "rkyv_08")]
     const _: () = {
         use diesel::query_builder::bind_collector::RawBytesBindCollector;
 
@@ -627,7 +627,7 @@ mod pg_impl {
         accepts!(TIMESTAMP, TIMESTAMPTZ);
     }
 
-    #[cfg(any(feature = "rkyv_07", feature = "rkyv_08"))]
+    #[cfg(feature = "rkyv_08")]
     const _: () = {
         impl ToSql for super::ArchivedTimestamp {
             fn to_sql(
@@ -716,7 +716,7 @@ mod rusqlite_impl {
         }
     }
 
-    #[cfg(any(feature = "rkyv_07", feature = "rkyv_08"))]
+    #[cfg(feature = "rkyv_08")]
     const _: () = {
         impl ToSql for super::ArchivedTimestamp {
             fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
@@ -730,27 +730,27 @@ mod rusqlite_impl {
 
 #[cfg(feature = "schema")]
 mod schema_impl {
-    use schemars::_serde_json::json;
-    use schemars::schema::{InstanceType, Metadata, Schema, SchemaObject, SingleOrVec};
-    use schemars::JsonSchema;
+    use schemars::{json_schema, JsonSchema, Schema, SchemaGenerator};
+
+    use std::borrow::Cow;
 
     use super::Timestamp;
 
     impl JsonSchema for Timestamp {
-        fn schema_name() -> String {
-            "ISO8601 Timestamp".to_owned()
+        fn schema_name() -> Cow<'static, str> {
+            Cow::Borrowed("ISO8601 Timestamp")
         }
 
-        fn json_schema(_gen: &mut schemars::gen::SchemaGenerator) -> Schema {
-            Schema::Object(SchemaObject {
-                metadata: Some(Box::new(Metadata {
-                    description: Some("ISO8601 formatted timestamp".to_owned()),
-                    examples: vec![json!("1970-01-01T00:00:00Z")],
-                    ..Default::default()
-                })),
-                format: Some("date-time".to_owned()),
-                instance_type: Some(SingleOrVec::Single(Box::new(InstanceType::String))),
-                ..Default::default()
+        fn schema_id() -> Cow<'static, str> {
+            Cow::Borrowed("iso8601_timestamp::Timestamp")
+        }
+
+        fn json_schema(_: &mut SchemaGenerator) -> Schema {
+            json_schema!({
+                "type": "string",
+                "format": "date-time",
+                "description": "ISO8601 formatted timestamp",
+                "examples": ["1970-01-01T00:00:00Z"],
             })
         }
     }
@@ -758,15 +758,15 @@ mod schema_impl {
 
 #[cfg(feature = "rand")]
 mod rand_impl {
-    use rand::distributions::{Distribution, Standard};
+    use rand::distr::{Distribution, StandardUniform};
     use rand::Rng;
 
     use super::Timestamp;
 
-    impl Distribution<Timestamp> for Standard {
+    impl Distribution<Timestamp> for StandardUniform {
         #[inline]
         fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Timestamp {
-            Timestamp(rng.gen())
+            Timestamp(rng.random())
         }
     }
 }
@@ -813,7 +813,7 @@ mod ramhorns_impl {
         }
     }
 
-    #[cfg(any(feature = "rkyv_07", feature = "rkyv_08"))]
+    #[cfg(feature = "rkyv_08")]
     const _: () = {
         impl Content for super::ArchivedTimestamp {
             fn capacity_hint(&self, _tpl: &ramhorns::Template) -> usize {
@@ -827,14 +827,8 @@ mod ramhorns_impl {
     };
 }
 
-#[cfg(all(feature = "rkyv_07", feature = "rkyv_08"))]
-compile_error!("Cannot enable both rkyv 0.7 and 0.8 features at the same time");
-
 #[cfg(feature = "rkyv_08")]
 pub use rkyv_08_impl::ArchivedTimestamp;
-
-#[cfg(feature = "rkyv_07")]
-pub use rkyv_07_impl::ArchivedTimestamp;
 
 #[cfg(feature = "rkyv_08")]
 mod rkyv_08_impl {
@@ -912,79 +906,6 @@ mod rkyv_08_impl {
     }
 }
 
-#[cfg(feature = "rkyv_07")]
-mod rkyv_07_impl {
-    use super::{Duration, Timestamp};
-
-    use rend_04::LittleEndian;
-
-    /// `rkyv`-ed Timestamp as a 64-bit signed millisecond offset from the UNIX Epoch.
-    ///
-    /// This value is Endian-agnostic, with zero overhead on little-endian archs.
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-    #[repr(transparent)]
-    pub struct ArchivedTimestamp(LittleEndian<i64>);
-
-    impl ArchivedTimestamp {
-        /// Get the raw millisecond offset
-        #[inline(always)]
-        #[must_use]
-        pub const fn get(self) -> i64 {
-            self.0.value()
-        }
-    }
-
-    impl From<ArchivedTimestamp> for Timestamp {
-        fn from(value: ArchivedTimestamp) -> Self {
-            Timestamp::UNIX_EPOCH
-                .checked_add(Duration::milliseconds(value.get()))
-                .unwrap_or(Timestamp::UNIX_EPOCH)
-        }
-    }
-
-    use rkyv_07::{Archive, Archived, CheckBytes, Deserialize, Fallible, Serialize};
-
-    impl<C: ?Sized> CheckBytes<C> for ArchivedTimestamp {
-        type Error = <LittleEndian<i64> as CheckBytes<C>>::Error;
-
-        #[inline(always)]
-        unsafe fn check_bytes<'a>(value: *const Self, _context: &mut C) -> Result<&'a Self, Self::Error> {
-            Ok(&*value)
-        }
-    }
-
-    impl Archive for Timestamp {
-        type Archived = ArchivedTimestamp;
-        type Resolver = ();
-
-        unsafe fn resolve(&self, _pos: usize, _resolver: Self::Resolver, out: *mut Self::Archived) {
-            out.write(ArchivedTimestamp(LittleEndian::<i64>::new(
-                self.duration_since(Timestamp::UNIX_EPOCH).whole_milliseconds() as i64,
-            )))
-        }
-    }
-
-    impl<S> Serialize<S> for Timestamp
-    where
-        S: Fallible + ?Sized,
-    {
-        #[inline(always)]
-        fn serialize(&self, _serializer: &mut S) -> Result<Self::Resolver, S::Error> {
-            Ok(())
-        }
-    }
-
-    impl<D> Deserialize<Timestamp, D> for Archived<Timestamp>
-    where
-        D: Fallible + ?Sized,
-    {
-        #[inline]
-        fn deserialize(&self, _deserializer: &mut D) -> Result<Timestamp, <D as Fallible>::Error> {
-            Ok(Timestamp::from(*self))
-        }
-    }
-}
-
 #[cfg(feature = "fred")]
 mod fred_impl {
     use fred::{
@@ -1040,7 +961,7 @@ mod fred_impl {
         }
     }
 
-    #[cfg(any(feature = "rkyv_07", feature = "rkyv_08"))]
+    #[cfg(feature = "rkyv_08")]
     const _: () = {
         use super::ArchivedTimestamp;
 

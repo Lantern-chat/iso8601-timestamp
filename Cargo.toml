@@ -1,6 +1,6 @@
 [package]
 name = "iso8601-timestamp"
-version = "0.3.3"
+version = "0.4.0"
 authors = ["novacrazy <novacrazy@gmail.com>"]
 edition = "2018"
 description = "High-performance ISO8601 Timestamp formatting and parsing"
@@ -22,12 +22,11 @@ serde = ["dep:serde_core"]
 diesel-pg = ["diesel", "diesel/postgres_backend"]
 js = ["js-sys"]
 pg = ["postgres-types", "bytes", "std", "postgres-protocol"]
-rkyv_07 = ["dep:rkyv_07", "rend_04"]
 rkyv_08 = ["dep:rkyv_08"]
 rusqlite = ["dep:rusqlite", "std"]
 rand = ["dep:rand", "time/rand"]
 quickcheck = ["dep:quickcheck", "time/quickcheck"]
-schema = ["schemars", "std"]
+schema = ["dep:schemars", "std"]
 verify = []                                                  # Verify numeric input during parsing
 default = ["std", "serde"]
 
@@ -36,27 +35,24 @@ generic-array = "1.0.0"
 serde_core = { optional = true, version = "1", default-features = false }
 time = { version = "0.3", default-features = false, features = ["macros"] }
 bytes = { optional = true, version = "1.1.0" }
-schemars = { optional = true, version = "0.8.8" }
-rusqlite = { optional = true, version = "0.32", default-features = false }
+schemars = { optional = true, version = "1" }
+rusqlite = { optional = true, version = "0.37", default-features = false }
 postgres-types = { optional = true, version = "0.2.2", features = ["with-time-0_3"], default-features = false }
 postgres-protocol = { optional = true, version = "0.6", default-features = false }
 diesel = { optional = true, version = "2", default-features = false, features = ["time", "with-deprecated"] }
-rand = { optional = true, version = "0.8", default-features = false }
+rand = { optional = true, version = "0.9", default-features = false }
 quickcheck = { optional = true, version = "1.0", default-features = false }
-worker = { optional = true, version = "0.5" }
+worker = { optional = true, version = "0.6" }
 js-sys = { optional = true, version = "0.3" }
 ramhorns = { optional = true, version = "1.0" }
 fred = { optional = true, version = "10.0", default-features = false }
 borsh = { optional = true, version = "1", default-features = false }
 
-rkyv_07 = { package = "rkyv", optional = true, version = "0.7", default-features = false, features = ["validation"] }
-rend_04 = { package = "rend", optional = true, version = "0.4", default-features = false }
-
 rkyv_08 = { package = "rkyv", optional = true, version = "0.8", default-features = false, features = ["bytecheck"] }
 
 [dev-dependencies]
 time = { version = "0.3", features = ["macros", "parsing", "formatting"] }
-criterion = { version = "0.5", features = ["html_reports"] }
+criterion = { version = "0.7", features = ["html_reports"] }
 chrono = "0.4"
 iso8601 = "0.6"
 ciborium = "0.2"
@@ -64,7 +60,7 @@ serde = { version = "1", features = ["derive"] }
 rkyv_08 = { package = "rkyv", version = "0.8", default-features = true }
 serde_json = "1"
 
-rusqlite = { version = "0.32", default-features = false, features = ["bundled"] }
+rusqlite = { version = "0.37", default-features = false, features = ["bundled"] }
 
 [[bench]]
 name = "timestamp"
