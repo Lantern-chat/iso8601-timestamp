@@ -18,6 +18,7 @@ features = ["serde", "pg", "schema", "rusqlite", "rand", "quickcheck", "borsh"]
 [features]
 std = ["time/std"]
 bson = ["serde"]
+serde = ["dep:serde_core"]
 diesel-pg = ["diesel", "diesel/postgres_backend"]
 js = ["js-sys"]
 pg = ["postgres-types", "bytes", "std", "postgres-protocol"]
@@ -32,7 +33,7 @@ default = ["std", "serde"]
 
 [dependencies]
 generic-array = "1.0.0"
-serde = { optional = true, version = "1", default-features = false }
+serde_core = { optional = true, version = "1", default-features = false }
 time = { version = "0.3", default-features = false, features = ["macros"] }
 bytes = { optional = true, version = "1.1.0" }
 schemars = { optional = true, version = "0.8.8" }

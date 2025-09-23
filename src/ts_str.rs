@@ -233,7 +233,7 @@ impl<S: IsValidFormat> fmt::Display for TimestampStr<S> {
 
 #[cfg(feature = "serde")]
 mod serde_impl {
-    use serde::ser::{Serialize, Serializer};
+    use serde_core::ser::{Serialize, Serializer};
 
     use super::{IsValidFormat, TimestampStr};
 

@@ -398,11 +398,11 @@ where
 
 #[cfg(feature = "serde")]
 mod serde_impl {
-    use serde::de::{Deserialize, Deserializer, Error, Visitor};
-    use serde::ser::{Serialize, Serializer};
+    use serde_core::de::{Deserialize, Deserializer, Error, Visitor};
+    use serde_core::ser::{Serialize, Serializer};
 
     #[cfg(feature = "bson")]
-    use serde::de::MapAccess;
+    use serde_core::de::MapAccess;
 
     use super::Timestamp;
 
