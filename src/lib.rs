@@ -674,6 +674,10 @@ mod rusqlite_impl {
 
     use core::{error, fmt, str};
 
+    extern crate alloc;
+
+    use alloc::borrow::ToOwned;
+
     impl error::Error for InvalidTimestamp {}
     impl fmt::Display for InvalidTimestamp {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -736,7 +740,9 @@ mod rusqlite_impl {
 mod schema_impl {
     use schemars::{json_schema, JsonSchema, Schema, SchemaGenerator};
 
-    use std::borrow::Cow;
+    extern crate alloc;
+
+    use alloc::borrow::Cow;
 
     use super::Timestamp;
 
