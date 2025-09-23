@@ -456,42 +456,27 @@ mod serde_impl {
                     M: MapAccess<'de>,
                 {
                     // In the MongoDB database, or generally with BSON, dates
-                    // are serialised into `{ $date: string }` where `$date`
-                    // is what we actually want.
-
-                    // Though in some cases if the year is < 1970 or > 9999, it will be:
+                    // are serialized into `{ $date: string }` where `$date`
+                    // is what we actually want. However, in some cases if the year is < 1970 or > 9999, it will be:
                     // `{ $date: { $numberLong: string } }` where `$numberLong` is a signed integer (as a string)
 
-                    #[derive(serde::Deserialize, Debug)]
-                    #[serde(untagged)]
-                    enum StringOrNumberLong {
-                        Str(Timestamp),
-                        Num {
-                            #[serde(rename = "$numberLong")]
-                            num: String,
+                    // in either case, to simplify things we recurse through the map until we find a primitive value
+
+                    let Some(key) = access.next_key::<&str>()? else {
+                        return Err(M::Error::custom("Map Is Empty"));
+                    };
+
+                    match key {
+                        // technically could parse non-string fields here, but it's unlikely and I don't care
+                        "$date" => access.next_value::<Timestamp>(), // recurse
+
+                        // technically this could occur at the top level, but same as above
+                        "$numberLong" => match access.next_value::<&str>()?.parse() {
+                            Ok(ms) => self.visit_i64(ms),
+                            Err(_) => Err(M::Error::custom("Invalid Number in `$numberLong` field")),
                         },
-                    }
 
-                    // Fish out the first entry we can find.
-                    let (key, v) = access
-                        .next_entry::<String, StringOrNumberLong>()?
-                        .ok_or_else(|| M::Error::custom("Map Is Empty"))?;
-
-                    // Match `$date` and only date.
-                    if key == "$date" {
-                        match v {
-                            StringOrNumberLong::Str(ts) => Ok(ts),
-                            StringOrNumberLong::Num { num } => match num.parse::<i64>() {
-                                Ok(ms) => Timestamp::UNIX_EPOCH
-                                    .checked_add(time::Duration::milliseconds(ms))
-                                    .ok_or_else(|| M::Error::custom(OUT_OF_RANGE)),
-                                Err(_) => return Err(M::Error::custom("Invalid Number")),
-                            },
-                        }
-                    } else {
-                        // We don't expect anything else in the map in any case,
-                        // but throw an error if we do encounter anything weird.
-                        Err(M::Error::custom("Expected only key `$date` in map"))
+                        _ => Err(M::Error::custom(format!("Unexpected key in map: {key}"))),
                     }
                 }
 

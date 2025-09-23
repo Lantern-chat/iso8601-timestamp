@@ -17,7 +17,7 @@ features = ["serde", "pg", "schema", "rusqlite", "rand", "quickcheck", "borsh"]
 
 [features]
 std = ["time/std"]
-bson = []
+bson = ["serde"]
 diesel-pg = ["diesel", "diesel/postgres_backend"]
 js = ["js-sys"]
 pg = ["postgres-types", "bytes", "std", "postgres-protocol"]
@@ -60,8 +60,8 @@ chrono = "0.4"
 iso8601 = "0.6"
 ciborium = "0.2"
 serde = { version = "1", features = ["derive"] }
-rkyv_07 = { package = "rkyv", version = "0.7", default-features = true }
 rkyv_08 = { package = "rkyv", version = "0.8", default-features = true }
+serde_json = "1"
 
 rusqlite = { version = "0.32", default-features = false, features = ["bundled"] }
 
