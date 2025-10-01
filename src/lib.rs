@@ -107,20 +107,26 @@ impl Timestamp {
 }
 
 #[cfg(all(feature = "worker", target_arch = "wasm32", not(feature = "js")))]
+impl From<worker::Date> for Timestamp {
+    fn from(d: worker::Date) -> Self {
+        match Timestamp::UNIX_EPOCH.checked_add(Duration::milliseconds(d.as_millis() as i64)) {
+            Some(ts) => ts,
+            None => panic!("Invalid Date value"),
+        }
+    }
+}
+
+#[cfg(all(feature = "worker", target_arch = "wasm32", not(feature = "js")))]
 impl Timestamp {
     /// Get the current time, assuming UTC.
     ///
     /// # Panics
     ///
     /// Panics if the current time is before the UNIX Epoch.
+    #[inline]
     #[must_use]
     pub fn now_utc() -> Self {
-        match Timestamp::UNIX_EPOCH
-            .checked_add(Duration::milliseconds(worker::Date::now().as_millis() as i64))
-        {
-            Some(ts) => ts,
-            None => panic!("Invalid Date::now() value"),
-        }
+        worker::Date::now().into()
     }
 }
 
@@ -436,10 +442,12 @@ mod serde_impl {
             impl<'de> Visitor<'de> for TsVisitor {
                 type Value = Timestamp;
 
+                #[inline]
                 fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                     formatter.write_str("an ISO8601 Timestamp")
                 }
 
+                #[inline]
                 fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
                 where
                     E: Error,
