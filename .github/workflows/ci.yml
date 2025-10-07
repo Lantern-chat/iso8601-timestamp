@@ -25,7 +25,7 @@ jobs:
                     - verify
                 external:
                     - ''
-                    - js worker rkyv_07
+                    - js worker
                     - diesel-pg rusqlite pg fred
                     - bson rand quickcheck schema ramhorns rkyv_08
 
