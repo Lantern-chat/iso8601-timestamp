@@ -1027,3 +1027,33 @@ mod borsh_impl {
         }
     }
 }
+
+#[cfg(feature = "utoipa")]
+mod utoipa_impl {
+    use std::borrow::Cow;
+    use utoipa::{
+        openapi::{KnownFormat, ObjectBuilder, RefOr, Schema, SchemaFormat, Type},
+        PartialSchema, ToSchema,
+    };
+
+    use super::Timestamp;
+
+    impl ToSchema for Timestamp {
+        fn name() -> Cow<'static, str> {
+            Cow::Borrowed("Timestamp")
+        }
+    }
+
+    impl PartialSchema for Timestamp {
+        fn schema() -> RefOr<Schema> {
+            RefOr::T(Schema::Object(
+                ObjectBuilder::new()
+                    .schema_type(Type::String)
+                    .format(Some(SchemaFormat::KnownFormat(KnownFormat::DateTime)))
+                    .description(Some("ISO8601 formatted timestamp"))
+                    .examples(["1970-01-01T00:00:00Z"])
+                    .build(),
+            ))
+        }
+    }
+}
