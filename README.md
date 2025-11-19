@@ -88,3 +88,6 @@ Similarly, when deserializing, it supports either an ISO8601 string or an `i64` 
 * `borsh`
     - Implements `Borsh` (de)serialization for `Timestamp` using the `borsh` crate.
     - Timestamps are serialized as `i64` milliseconds since the Unix Epoch.
+
+* `utoipa`
+    - Enables implementation for `ToSchema` for generating a JSON schema on the fly using `utoipa`.
