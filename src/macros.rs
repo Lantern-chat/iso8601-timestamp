@@ -20,6 +20,8 @@ pub unsafe fn unlikely(b: bool) -> bool {
 #[rustfmt::skip]
 #[inline(always)]
 pub unsafe fn assume(b: bool) {
+    debug_assert!(b);
+
     if !b { core::hint::unreachable_unchecked() }
 }
 
@@ -43,7 +45,10 @@ macro_rules! unlikely {
 
 #[rustfmt::skip]
 macro_rules! assume {
-    ($e:expr) => { $crate::macros::assume($e) }
+    ($e:expr) => {{
+        debug_assert!($e, concat!(stringify!($e)));
+        $crate::macros::assume($e);
+    }};
 }
 
 #[allow(unused_macros)]
